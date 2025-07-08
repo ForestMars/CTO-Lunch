@@ -59,3 +59,10 @@
     Sourcegraph Cody 1.0: Real-time code index integration, full local context window.
     Microsoft AgentFlow: Logic builder for orchestrating GPT-based tools; preview for enterprise Azure users.
     
+    Industry Impact
+    The agent wars have moved down-stack. Every tool is becoming agent-aware. For CTOs, this means rethinking workflows, not just prompts. It’s less about chatbot UX and more about letting agents own entire lifecycle tasks—from triage to PR. That’s real leverage, if you can operationalize it.
+    
+    One More Thing…
+    Claude now has an API for memory. For CTOs building SaaS, that means you can sync user state into Claude across sessions. Think onboarding, config recall, customer context. It’s early, and there are limits—but it’s the start of persistent agents as a real app pattern.
+    
+    See everyone at lunch.
