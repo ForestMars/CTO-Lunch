@@ -1,0 +1,6 @@
+- AI-pentest scale: XBOW claims 1,092 zero-day finds, “80× faster vs manual”; integrating GPT-5 yielded ~2× throughput gain.
+- Ransomware volume: 3,627 incidents in H1 2025 (+47 % YoY); 506 in Aug 2025 alone. [Acronis]
+- IoT risk prevalence: ~35 billion connected devices (2025 forecast); ≥50 % have ≥1 critical/high vulnerability; IoT vectors in 1 in 3 breaches.
+- Patch SLA adherence: CISA demands critical fixes within 15 days; recommended triage: workaround within 72 h, full rem. in 15 days.
+- Agentic IAM controls: Enforce token TTL ≤ 15 minutes for write-capable agents; agent events logged immutably, retained ≥ 12 months.
+- Pentest KPI targets: MTTR for critical KEV ≤ 15 days; exfil detection TTD ≤ 24 h; false positives on “critical” automated findings < 25 %
