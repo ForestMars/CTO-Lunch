@@ -1,0 +1,1 @@
+HOPE_16 wasn’t just cyber nostalgia given a new cadence. It was a reminder that the bleeding edge of hacker culture is shipping and will land in production if you don’t make it  there first. The good news: most of the defenses are practical and affordable. The bad news: ignoring them is an explicit invitation to any 16 year old script-kiddie with a spare weekend and a cheap SDR.
