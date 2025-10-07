@@ -87,3 +87,4 @@ The mandate from ELC is stark: refactor architecture for agentic systems immedia
  **CTO Craft Con: Berlin** (September 23–24) is a highly focused event for Chief Technology Officers and senior tech leaders, designed to be smaller, smarter, and centered around four pillars: **Leadership, Technology, Culture, and Wellbeing**. Its agenda tackles practical organizational evolution, covering topics from building lean, high-performing teams to defining new engineering capabilities to meet shifting business models, with a heavy emphasis on mitigating the *burnout* and cultural strain of constant change.
 TL;dr
 TL;dr
+TL;dr
