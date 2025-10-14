@@ -1,0 +1,82 @@
+- Free APIs
+    
+    ---
+    
+    ## 🧠 LLMs With Free or Generous API Tiers
+    
+    ### 1. **OpenRouter** ([https://openrouter.ai](https://openrouter.ai/))
+    
+    - **Why it's interesting**: Aggregates *many* LLMs behind a single API (Mistral, Claude, Meta, etc.)
+    - **Free tier**: Depends on the model — **some have free usage**, especially from open-source models or for testing
+    - **Authentication**: Just an API key
+    - **Bonus**: You can self-host or use their hosted gateway
+    - **Docs**: [https://docs.openrouter.ai](https://docs.openrouter.ai/)
+    
+    ---
+    
+    ### 2. **Together AI** ([https://www.together.ai](https://www.together.ai/))
+    
+    - **API Access**: Yes
+    - **Free tier**: Yes — generous free tier (hundreds of thousands of tokens/month as of last check)
+    - **Models**: Mistral, LLaMA, Mixtral, Code LLMs, etc.
+    - **Rate limiting**: Exists but reasonable for dev use
+    - **Docs**: [https://docs.together.ai](https://docs.together.ai/)
+    
+    ---
+    
+    ### 3. **Groq API (with Mixtral)** ([https://console.groq.com](https://console.groq.com/))
+    
+    - **Free access**: ✅ Yes — at the moment, **Groq provides free API usage** for super fast inference using open models like **Mixtral**
+    - **Insanely fast**: Latency in tens of milliseconds
+    - **Good for**: Chatbots, function-calling prototypes, cheap API inference
+    - **Docs**: [https://docs.groq.com](https://docs.groq.com/)
+    
+    ---
+    
+    ### 4. **Anyscale Endpoints** ([https://endpoints.anyscale.com](https://endpoints.anyscale.com/))
+    
+    - **Free usage**: Yes — has **demo access** and generous **free-tier**
+    - **Models**: Mistral, LLaMA2, Zephyr, etc.
+    - **Docs**: [https://docs.endpoints.anyscale.com](https://docs.endpoints.anyscale.com/)
+    
+    ---
+    
+    ### 5. **Perplexity API** ([https://docs.perplexity.ai](https://docs.perplexity.ai/))
+    
+    - **Access**: Recently added API access for their **search-augmented model**
+    - **Free usage**: They were offering it for early dev access, though **may now require approval**
+    - **Use case**: Great for RAG, question answering
+    
+    ---
+    
+    ### 6. **Hugging Face Inference API** (https://huggingface.co/inference-api)
+    
+    - **Free tier**: Yes, but limited (very low request rate)
+    - **Models**: Any model hosted on Hugging Face (like `mistralai/Mixtral`, `meta-llama/Llama-3`, etc.)
+    - **Best for**: Prototyping or demoing open models
+    - **Note**: You can self-host with `transformers` + `text-generation-inference`
+    
+    ---
+    
+    ## 🚫 Most Paid (But Web UIs Are Free)
+    
+    These providers offer free **web use**, but **not API access** unless you pay:
+    
+    | Provider | Web UI Free | API Free |
+    | --- | --- | --- |
+    | OpenAI (ChatGPT) | ✅ (GPT-3.5) | ❌ |
+    | Anthropic (Claude) | ✅ (Claude.ai) | ❌ (API is paid) |
+    | Perplexity | ✅ | 🚫 Maybe trial only |
+    | Mistral | ✅ via HuggingChat | ✅ via Together.ai / Groq |
+    | Meta (Llama) | ✅ via demos | ✅ via Together.ai, Groq, OpenRouter |
+    
+    ---
+    
+    ## 💡 TL;DR — You Want These:
+    
+    - 🥇 **Together.ai** — most generous, multiple models
+    - 🥈 **OpenRouter** — easy switching between models
+    - 🥉 **Groq** — Mixtral inference, **free and blazing fast**
+    - 🎖️ **Anyscale** — similar to Together but a bit less known
+    
+    ---
