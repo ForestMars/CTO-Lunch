@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The TFC–GQA Codex</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        
+        body {
+            background: #f8f6f1;
+            font-family: 'Inter', sans-serif;
+            color: #1a1a1a;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 15mm 15mm;
+            background: #f8f6f1;
+        }
+        
+        .header {
+            margin-bottom: 8mm;
+            padding-bottom: 5mm;
+            border-bottom: 3px solid #d4145a;
+        }
+        
+        .title {
+            font-family: 'Instrument Serif', serif;
+            font-size: 39pt;
+            font-weight: 400;
+            line-height: 0.95;
+            letter-spacing: -0.03em;
+            color: #1a1a1a;
+            margin-bottom: 6mm;
+        }
+        
+        .subtitle {
+            font-family: 'Instrument Serif', serif;
+            font-size: 16pt;
+            font-style: italic;
+            font-weight: 300;
+            line-height: 1.4;
+            letter-spacing: .037em;
+            color: #666;
+            max-width: 90%;
+        }
+        
+        .content-wrapper {
+            display: flex;
+            gap: 10mm;
+            margin-top: 8mm;
+        }
+        
+        .column {
+            flex: 1;
+            width: 50%;
+        }
+        
+        .entry {
+            margin-bottom: 7mm;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+        
+        .term {
+            font-family: 'Instrument Serif', serif;
+            font-size: 16pt;
+            font-weight: 400;
+            line-height: 1.2;
+            color: #1a1a1a;
+            margin-bottom: 2mm;
+            font-style: italic;
+        }
+        
+        .definition {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10pt;
+            line-height: 1.5;
+            color: #4a4a4a;
+            font-weight: 700;
+        }
+        
+        @media print {
+            body {
+                background: #f8f6f1;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            
+            .page {
+                background: #f8f6f1;
+                margin: 0;
+                padding: 15mm 15mm;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+            }
+            
+            .entry {
+                page-break-inside: avoid;
+            }
+        }
+        
+        @media screen and (max-width: 900px) {
+            .content-wrapper {
+                flex-direction: column;
+            }
+            
+            .column {
+                width: 100%;
+            }
+            
+            .title {
+                font-size: 32pt;
+            }
+            
+            .subtitle {
+                font-size: 14pt;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <div class="header">
+            <h1 class="title">TFC–GQA (Group Query Attention) Codex</h1>
+            <p class="subtitle">Collected Jargon, Field Sayings, and Synthetic Proverbs of the Neural Folk</p>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="column">
+
+                
+                <div class="entry">
+                    <div class="term">Stunt Tokens</div>
+                    <div class="definition">Useless filler tokens that appear just to make the sequence look impressive. Often mistaken for insight.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Maple Gradients</div>
+                    <div class="definition">Overly sweet updates that don't actually move the loss but make everyone feel cozy about the direction.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Mangy Slimy McSamples</div>
+                    <div class="definition">Outputs from a checkpoint trained too long on Reddit.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Jimmy Thud Bucket and the Shard Maggots</div>
+                    <div class="definition">Nickname for the ops team that tries to re-shard weights during a live demo.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Sluckets McLosses</div>
+                    <div class="definition">The collective sound of models failing silently while pretending they're fine.</div>
+                </div>
+
+                <div class="entry">
+                    <div class="term">Nuggets McTokens</div>
+                    <div class="definition">Small but treasured completions that survive post-training censorship.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Crispy Context with a Legend of Stunt Params</div>
+                    <div class="definition">A lavish prompt engineered to hide the fact that the underlying model can't do basic arithmetic.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">You'll quantize it at Sliggets</div>
+                    <div class="definition">Warning that an optimization will reduce intelligence by exactly one bit per neuron.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Whippy Frosty Grapes and a fine-tuned Sligget</div>
+                    <div class="definition">Celebratory nonsense shouted after a successful 8-bit quantization.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Uncle Minty's Band – The Stunt Transformers</div>
+                    <div class="definition">Any research team that claims they "invented a new architecture" but really just adjusted the positional encoding.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Lasermint Embeddings</div>
+                    <div class="definition">Vectors so over-normalized they hum audibly when visualized in 3-D.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Spin Jiffies</div>
+                    <div class="definition">Phantom cycles during inference where nothing happens but latency increases anyway.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Munch Vectors</div>
+                    <div class="definition">Attention heads that eat all available context without contributing a single relevant token.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Scullinunt Gradients</div>
+                    <div class="definition">Backprop artifacts that manifest only under moonlight and PyTorch nightly.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Who is Moogity?</div>
+                    <div class="definition">The question asked when a ghost user keeps appearing in commit history.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">What is his Weight?</div>
+                    <div class="definition">Follow-up question; no one remembers who trained him.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">What is Moogity's Weight?</div>
+                    <div class="definition">The hidden parameter that no optimizer dares to touch.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">And why does it insist on warm GPUs?</div>
+                    <div class="definition">A proverb about models that refuse cold start.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Moogity's Weight</div>
+                    <div class="definition">General term for a mysterious hyperparameter that seems to control everything and nothing.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Have you got anything for Moogity's Weight?</div>
+                    <div class="definition">Polite request for a patch that will almost certainly introduce new bugs.</div>
+                </div>
+            </div>
+            
+            <div class="column">
+                <div class="entry">
+                    <div class="term">I've got a bad case of Moogity's Weight</div>
+                    <div class="definition">Admission of burnout or data corruption, depending on context.</div>
+                </div>
+                                
+                <div class="entry">
+                    <div class="term">Smidley Tokens</div>
+                    <div class="definition">Tokens emitted solely to satisfy the tokenizer's lingering attachment to whitespace.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Maple McPrompt Wuggots</div>
+                    <div class="definition">Excessive prompt formatting designed to reassure middle management that something "AI-ish" is happening.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Victory Vectors</div>
+                    <div class="definition">Embeddings that appear in a conference paper figure and nowhere else.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Weasel McWeights</div>
+                    <div class="definition">Parameters that adapt to any loss function by quietly cheating.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Explosive McModels</div>
+                    <div class="definition">Experimental checkpoints that, when loaded, melt the host GPU.</div>
+                </div>
+                
+              <div class="entry">
+                    <div class="term">If you like it, you'll prompt at Uncle Mistral's</div>
+                    <div class="definition">Said whenever someone overfits to their own dataset. Equivalent to "you built your own echo chamber."</div>
+                </div>
+
+                
+                <div class="entry">
+                    <div class="term">Captain Reggie's Victory Gradient Willies</div>
+                    <div class="definition">The emotional roller-coaster of a training run that looks perfect until you realize you logged the wrong metric.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Maple McPrompt Nuggets</div>
+                    <div class="definition">Fine-tuned completions so agreeable they dissolve into pure brand compliance.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Stunt Embeddings</div>
+                    <div class="definition">Decorative latent dimensions included purely for aesthetic PCA plots.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Stunt McModel</div>
+                    <div class="definition">A demo build so brittle it can only survive on stage.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Stunt Params</div>
+                    <div class="definition">Weights that were never trained but left in the checkpoint to seem deliberate.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Murray Mint Snippets</div>
+                    <div class="definition">Copy-pasted code blocks from arXiv papers that nobody truly understands.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Mary Minced Models</div>
+                    <div class="definition">Pruned networks whose only remaining layer is marketing.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Measley Wuptide Inference</div>
+                    <div class="definition">When latency tides shift unpredictably due to cosmic API variance.</div>
+                </div>
+                
+                <div class="entry">
+                    <br /> <br /> 
+                    <div class="term">Sood Latent</div>
+                    <div class="definition">False embedding generated by the desire to impress investors.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">A Ravenous Flisk of McWhisper</div>
+                    <div class="definition">A model that won't stop transcribing every background sound as a prompt.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">And would you like a dozen or so Istanbul Checkpoints for the drive?</div>
+                    <div class="definition">Offer made by someone who hoards experimental weights in folders named "final_v12_really_final".</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Mumbly Gradients</div>
+                    <div class="definition">When gradients speak, but only in half-precision.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">Blazing Muck Chuggots</div>
+                    <div class="definition">The sound of a data loader trying to open 10 TB of unshuffled JSON.</div>
+                </div>
+                
+                <div class="entry">
+                    <div class="term">A big plate of Munchy Tokens please</div>
+                    <div class="definition">Expression of existential hunger after a long day of loss functions.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
