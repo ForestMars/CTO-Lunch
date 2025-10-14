@@ -1,0 +1,42 @@
+- **GPT2/ oss-gpt arch notes** [[Racshka](https://magazine.sebastianraschka.com/p/from-gpt-2-to-gpt-oss-analyzing-the)] 574 likes
+    
+    ablation- remove component to understand impact on system 
+    
+    2022 GPT proved concrete usefulness on top of previously established scaling of transformer models 
+    
+    GPT-2 decoder only 
+    
+    dropout not really used in modern LLMs (bc single epoch training) 
+    
+    - 2.2 RoPE Replaces Absolute Positional Embeddings
+        - By default, attention treats the input tokens as if they have no order.
+        - OG GPT deals w this by adding a learned embedding vector for each position in the sequence
+        - token embeddings + positional embeddings = input embeddings
+        - RoPE (Rotary Position Embedding) encodes position by rotating the query and key vectors dependent on each token's position
+    - 2.3 Swish/SwiGLU Replaces GELU
+        - Swish aka sigmoid linear unit or SiLU
+        - Activation functions formerly hot topic til we settled on ReLU 10+ yrs ago
+        - GELU computationally more expensive than Swish
+            - but performance close, +/- hyperparam tuning
+        - GLU (gated linear unit) [replaces](https://arxiv.org/pdf/2002.05202) feed forward model
+    - 2.4 MoE replaces single FF module
+    - 2.5 Grouped Query replaces Multi-Head attention
+        - MHA, each head has its own set of keys and values.
+        - GQA reduces memory usage by grouping multiple heads to share the same key and value projections.
+        - QKV
+            - For every input token (a word or sub-word unit), the model generates three different vectors: a Query (Q), a Key (K), and a Value (V).
+    - 2.6 Sliding Window Attention popularized by Mistral
+        - gpt-oss applies to every 2nd layer
+        - window size in Gemma 2 was 4096 tokens, which Gemma 3 reduced to 1024. In gpt-oss, the window is just 128 tokens
+    - 2.7 replacing LayerNorm (2016) by RMSNorm (2019)
+        - LayerNorm subtracts the mean and divides by the standard deviation such that the layer outputs have a zero mean and unit variance (variance of 1 and standard deviation of one).
+        - RMSNorm divides the inputs by the root-mean-square (cheaper to compute)
+            
+            Unlike LayerNorm, RMSNorm has no bias (shift) term and reduces the expensive mean and variance computations to a single root-mean-square operation. This reduces the number of cross-feature reductions from two to one, which lowers communication overhead on GPUs
+            
+        - RMSNorm is old hat (it's basically a simplified version of LayerNorm with fewer trainable parameters)
+    - 4.3 MXFP4 quantization scheme for the MoE experts allows single (non-consumer) GPU
+        - requires RTX 50-series GPU
+    - Qwen3-Instruct top open-weight model on LM Arena a/o August
+    - model cards
+    -
