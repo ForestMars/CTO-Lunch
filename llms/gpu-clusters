@@ -1,0 +1,95 @@
+- GPU clusters
+    
+    Access to a GPU supercluster for practicing distributed training can be obtained through various cloud platforms and specialized providers. These platforms offer access to powerful GPUs and allow you to scale up to multiple GPUs for distributed training. Here are some options you can explore, along with their pricing details:
+    
+    ### 1. **Amazon Web Services (AWS)**
+    
+    - **Service**: **Amazon EC2 P4d instances** (for high-performance GPU workloads)
+    - **Type of GPUs**: NVIDIA A100 Tensor Core GPUs
+    - **Key Features**: Fully managed infrastructure, scalability, distributed training with frameworks like TensorFlow, PyTorch, and Horovod.
+    - **Pricing**:
+        - On-demand pricing for a **p4d.24xlarge** (8x A100 GPUs): ~**$32.77/hour**
+        - Spot instances (discounted pricing) can be significantly cheaper.
+        - Monthly cost can range from **$25,000 to $30,000+** depending on usage.
+    - **Additional Costs**: Data storage (EBS), networking, and any additional services (like SageMaker for ML workflows).
+    
+    **Website**: [AWS EC2 P4d Instances](https://aws.amazon.com/ec2/instance-types/p4/)
+    
+    ### 2. **Google Cloud Platform (GCP)**
+    
+    - **Service**: **AI Platform (Vertex AI)** or **Google Compute Engine (GCE)** instances
+    - **Type of GPUs**: A100, V100, P100, T4
+    - **Key Features**: Seamless integration with TensorFlow, PyTorch, and distributed training frameworks. You can create custom GPU clusters using GCP Compute Engine.
+    - **Pricing**:
+        - **NVIDIA A100** on-demand instance: **$2.50 to $3.00/hour** per GPU.
+        - For example, a **n1-standard-16** instance with **8 A100 GPUs**: approximately **$20/hour**.
+        - You can also use **preemptible instances** for cheaper rates (as low as 50% of regular pricing).
+    - **Monthly Cost**: With continuous usage, this could be anywhere between **$15,000 to $25,000 per month** for an 8-GPU cluster.
+    
+    **Website**: [Google Cloud AI Platform](https://cloud.google.com/ai)
+    
+    ### 3. **Microsoft Azure**
+    
+    - **Service**: **Azure Machine Learning** or **N-series VMs**
+    - **Type of GPUs**: NVIDIA V100, A100, and older models.
+    - **Key Features**: Supports distributed training through frameworks like PyTorch, TensorFlow, and Azure ML.
+    - **Pricing**:
+        - **NCas v4 (A100-based)**: Around **$3.00 to $4.00/hour** per GPU.
+        - For a **Standard NC24ads v4** instance with 8 GPUs: approximately **$25-$35/hour**.
+    - **Monthly Cost**: For continuous use of a cluster with 8 GPUs, costs could be in the range of **$20,000 to $30,000/month**.
+    
+    **Website**: [Azure Machine Learning](https://azure.microsoft.com/en-us/services/machine-learning/)
+    
+    ### 4. **Paperspace**
+    
+    - **Service**: **Paperspace Gradient** for machine learning and distributed training.
+    - **Type of GPUs**: NVIDIA V100, A100, and P4000.
+    - **Key Features**: Lower barrier to entry compared to AWS, GCP, and Azure. Supports distributed training with Horovod, TensorFlow, PyTorch.
+    - **Pricing**:
+        - **P5000 GPU**: Around **$0.40/hour**.
+        - **A100 GPU**: Approx **$2.00/hour**.
+        - Monthly cost depends on usage and whether you use reserved or on-demand instances.
+    
+    **Website**: [Paperspace Gradient](https://www.paperspace.com/gradient)
+    
+    ### 5. **Vast.ai**
+    
+    - **Service**: **Vast.ai** provides flexible access to GPUs from a marketplace of providers.
+    - **Type of GPUs**: A range of options including A100, V100, P100, T4.
+    - **Key Features**: Vast.ai allows you to rent GPU resources on demand at competitive prices.
+    - **Pricing**:
+        - **A100 GPU instances**: Around **$1.50 to $2.00/hour**.
+        - **V100 GPU**: As low as **$0.50/hour**.
+    - **Monthly Cost**: Could range from **$1,500 to $6,000** depending on the configuration and usage.
+    
+    **Website**: [Vast.ai](https://vast.ai/)
+    
+    ### 6. **Lambda Labs**
+    
+    - **Service**: Lambda GPU Cloud, offering dedicated GPU machines for deep learning.
+    - **Type of GPUs**: A100, V100, RTX 3090, and other configurations.
+    - **Key Features**: Optimized for machine learning workloads, and Lambda also sells GPU hardware if you're looking to set up your own supercluster.
+    - **Pricing**:
+        - **A100 GPU instance**: Around **$2.50/hour**.
+        - **RTX 3090 GPU instance**: Around **$1.00/hour**.
+    - **Monthly Cost**: A fully configured 8-GPU cluster could cost between **$15,000 to $25,000/month**.
+    
+    **Website**: [Lambda Labs](https://lambdalabs.com/)
+    
+    ---
+    
+    ### Factors that Affect Cost:
+    
+    1. **GPU Type**: A100s are more expensive, but also more powerful for distributed deep learning tasks. T4 and V100 GPUs are cheaper and might still be sufficient for certain tasks.
+    2. **Instance Type**: If you're using a specialized instance (e.g., P4d on AWS or A100s), costs will rise.
+    3. **Spot Instances/Preemptible VMs**: These offer significant discounts (up to 90%), but they can be interrupted, so not ideal for long-running jobs.
+    4. **Storage and Data Transfer**: Costs can add up if you're working with large datasets that require high storage and frequent data transfers.
+    
+    ### Free/Lower-Cost Options (For Learning and Small Projects):
+    
+    - **Google Colab**: Free access to Tesla K80, P100, and T4 GPUs (limited session duration and restrictions on usage).
+    - **Kaggle Kernels**: Offers free access to T4 GPUs with limited hours.
+    - **Paperspace Community**: Offers a lower-cost option for learning with limited resources.
+    - **Azure Notebooks**: Free but with restrictions on computational resources.
+    
+    If you're looking for long-term, large-scale distributed training, cloud platforms like AWS, GCP, and Azure would be your go-to. However, if you're more into experimentation or short-term practice, using something like Paperspace, Lambda, or even preemptible instances on GCP or AWS can save costs significantly.
