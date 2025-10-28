@@ -1,5 +1,0 @@
-- OG Transformer Decoder Module
-    
-    original transformer (from the "[Attention is all you need](https://arxiv.org/abs/1706.03762)" paper) placed the two normalization layers in the transformer block *after* ****the attention module and the FeedForward module, respectively.
-    
-    This is also known as Post-LN or Post-Norm.

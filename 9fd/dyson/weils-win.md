@@ -1,7 +1,0 @@
-- kevin weil’s win
-    
-    Yet buried beneath this spectacle was a quiet triumph that revealed the true dysfunction at play. While the public focused on the drama, OpenAI's product lead Kevin Weil delivered a version that saved customers millions of dollars while simultaneously cutting OpenAI's own supply-side costs —emergency pricing cuts from $60 to $15 per million tokens that could shift a large share of the $1.4 billion code-assistant market back to OpenAI. In any rational universe, this would be hailed as a career milestone for any CPO.
-    
-    Yet amid the drama, product lead Kevin Weil quietly delivered a major triumph: GPT-5 saved customers millions while reducing OpenAI’s supply-side costs. In any rational universe, this would be a career milestone. In ours, it was buried under nine minutes of corporate backslapping, overshadowed by Altman’s malapropisms and the launch’s spectacle. Additional wins, like the announcement of **Stargate Norway**, OpenAI’s first new global data center, barely made the headlines.
-    
-    In spite of the hype train wreck, product lead Kevin Weil quietly delivered a major win: the latest release saved customers millions while reducing supply-side costs. In a fair universe, this would be a career milestone; in the real one, Altman managed to faceplant the tonally dead launch event. Other wins flew under the radar: Stargate Norway was announced as the first data center in its program.
