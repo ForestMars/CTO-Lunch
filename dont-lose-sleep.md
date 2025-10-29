@@ -1,8 +1,8 @@
 CTO Lunch NYC
 CTO Lunch NYC
 
-Don't Lose Sleep Over It
-CTOs literally lost sleep over the us-east-1 outage. Here's how to make sure you're not one of them next time.
+# Don't Lose Sleep Over It
+## CTOs literally lost sleep over the us-east-1 outage. Here's how to make sure you're not one of them next time.
 Forest Mars and CTO Lunch NYC
 Oct 28, 2025
 
@@ -32,7 +32,7 @@ When us-east-1’s control plane seized up, the data kept flowing (data plane), 
 
 Here’s why you’re reading this: by the time you finish this article, you will never lose sleep over an AWS outage again. Not the metaphorical kind (war rooms, pager duty) and not the literal kind (your infrastructure seizing up while you watch error rates spike). The smart beds froze. Your systems won’t. Because you’re about to understand the one architectural distinction that separated the 85+ companies that went dark from the ones that didn’t even notice.
 
-Context & Background
+## Context & Background
 The October 20th outage in us-east-1 began with a DNS resolution failure hitting a regional DynamoDB endpoint. What happened next was a textbook distributed system disaster: a race condition in DynamoDB’s replication logic. One replica lagged critically, while a second, faster replica accelerated its write cycle. When the faster replica completed its cycle, it mistakenly purged records that were still valid data being processed by the lagging replica. Whoopsie. Every valid IP address for the primary us-east-1 DynamoDB endpoint was wiped out.
 
 Now, you might think: “DNS issue in DynamoDB? In us-east-1? My app doesn’t even use either of those.” That’s an Admiral Ackbar moment. It’s a trap.
@@ -51,8 +51,8 @@ This is the reality of architectural coupling: your supposedly multi-region stac
 
 Jassy’s recent claims about AI-generated code are a distraction here. This wasn’t AI gone rogue; it was a basic race condition in replication logic. What made it catastrophic was the architectural coupling: one DNS failure in one service cascaded across the entire control plane because fundamental service dependencies were not resilient to a single point of failure. But here’s the thing: a properly architected application should not be subject to an outage here. Rather than bemoan AWS’ very real “brain drain,” let’s examine what that looks like and how to prevent future occurrences.
 
-Industry Impact
-Multi-region Doesn’t Save You
+## Industry Impact
+### Multi-region Doesn’t Save You
 Let’s be absolutely clear about the scale of this failure. This wasn’t a handful of scrappy startups. This was a who’s who of companies that supposedly “get it”:
 
 Adobe Creative Cloud, Airtable, Amazon (yes, Amazon’s own services including Alexa and Prime Video), Apple Music, AT&T, ChatGPT, Coinbase, Delta Air Lines, Duolingo, Fortnite, GoDaddy, HBO Max, Hulu, IMDb, Instacart, League of Legends, Microsoft (including 365, Outlook, and Teams), Navy Federal Credit Union, Peloton, PlayStation Network, Reddit, Ring, Robinhood, Roblox, Roku, Signal, Slack, Snapchat, Starbucks, Steam, T-Mobile, Trello, United Airlines, Venmo, Verizon, Wall Street Journal, Wordle, Xbox, Zoom...
@@ -86,56 +86,56 @@ One critical distinction most engineers miss is in the authentication flow. IAM 
 
 The solution demands not a compromise, but a surgical separation achieving both maximum security and maximum resilience
 
-The Token Expiration Reality: Security vs. Survival
+#### The Token Expiration Reality: Security vs. Survival
 The high-stakes problem of freezing 16GB-per-month smart beds and stalling global resources stems from numerous baked-in control plane dependencies. This token expiration vulnerability, while not trivial to fix, presents the highest-value architectural flaw demanding immediate guidance to resolve. (For additional areas to add to your resilience audit, see part two of this post.) The modern security consensus requires short TTLs; 15-minute TTL for client-side JWTs ensures correct security hygiene. Yet, applying that logic to the application layer forces your infrastructure to ask the paralyzed Control Plane for fresh STS keys every 15 minutes. That security practice creates a resilience killer. The solution demands not a compromise, but a surgical separation achieving both maximum security and maximum resilience.
 
-Security Mandate (JWT TTL): Enforce short 15-minute expiration on user-facing session tokens. (Minimize security risk.)
+- Security Mandate (JWT TTL): Enforce short 15-minute expiration on user-facing session tokens. (Minimize security risk.)
 
-Resilience Mandate (STS TTL): Configure your IAM roles for the maximum session duration of 12 hours (43,200 seconds, the longest AWS allows) for all application-facing AssumeRole calls. (Maximize operational autonomy.)
+- Resilience Mandate (STS TTL): Configure your IAM roles for the maximum session duration of 12 hours (43,200 seconds, the longest AWS allows) for all application-facing AssumeRole calls. (Maximize operational autonomy.)
 
 This surgical separation works perfectly, if your user authentication doesn’t depend on AWS control plane. If you’re using Auth0, Okta, or your own auth service, you can maintain 15-minute user tokens and refresh them indefinitely during an outage because token issuance happens independently of AWS. But if you’re using Cognito, you have a problem. Cognito requires control plane calls to issue and refresh user tokens. When us-east-1 goes down, users can’t get new tokens. After 15 minutes, everyone’s sessions expire and nobody can log back in. Revenue stops. If you’re on Cognito, you have three options:
 
-Option 1: Extend User Token TTLs (Quick Fix, Security Trade-off)
+##### Option 1: Extend User Token TTLs (Quick Fix, Security Trade-off)
 Set user JWTs to 8-12 hours instead of 15 minutes. Users stay logged in through outages. Your security team will hate this (stolen tokens remain valid for hours instead of minutes.) But it buys survival time without infrastructure changes.
 
 Security mitigations to pair with longer TTLs: Implement aggressive session monitoring (flag unusual IP/device changes), enforce re-authentication for sensitive operations (password changes, payment methods), and enable automatic token revocation on suspicious activity. You’re trading broader exposure windows for operational resilience so make sure your detection and response capabilities match the increased risk.
 
-Cost: $0 (config change) + ~$20K for enhanced monitoring
+- Cost: $0 (config change) + ~$20K for enhanced monitoring
 
-Time: 1 day (TTL change) + 1-2 sprints (monitoring)
+- Time: 1 day (TTL change) + 1-2 sprints (monitoring)
 
-Best for: Band-aid while planning migration
+- Best for: Band-aid while planning migration
 
-Option 2: Migrate Off Cognito (Correct Solution, Expensive)
+##### Option 2: Migrate Off Cognito (Correct Solution, Expensive)
 Use Auth0, Okta, or run your own auth. These don’t depend on AWS control plane for token operations. Users can log in and refresh tokens during us-east-1 outages. \o/
 
-Cost: $50-200K/year (managed) or $200-500K migration
+- Cost: $50-200K/year (managed) or $200-500K migration
 
-Time: 3-6 months
+- Time: 3-6 months
 
-Best for: Companies where 15 minutes of downtime costs >$100K
+- Best for: Companies where 15 minutes of downtime costs >$100K
 
-Option 3: Build Cognito Failover (Don’t Do This)
+##### Option 3: Build Cognito Failover (Don’t Do This)
 Maintain dual auth systems with automatic failover. If you’re building your own auth anyway, just use it as primary and skip Cognito. This is the kind of over-engineering that looks impressive in architecture reviews and terrible on P&Ls.
 
-Cost: $500K+
+- Cost: $500K+
 
-Time: 6-12 months
+- Time: 6-12 months
 
-Best for: Nobody
+- Best for: Nobody
 
 The companies that survived Monday weren’t using Cognito. If you’re looking for the TD;DR TL;DR, that’s it. They’d already migrated to independent auth providers. The companies scrambling in war rooms were the ones who’d optimized for AWS integration convenience and discovered that convenience has a cost measured in revenue per hour.
 
-TL;DR Action Items
-Know What Will Kill You - HIGH PRIORITY (30 Days)
-Budget: $25-75K | Resources: 1 Sr Eng (80%) | Outcome: Prioritized Risk Assessment
+## TL;DR Action Items
+### Know What Will Kill You - HIGH PRIORITY (30 Days)
+#### Budget: $25-75K | Resources: 1 Sr Eng (80%) | Outcome: Prioritized Risk Assessment
 
 Inventory Global Control Plane Dependencies: Audit your runtime control plane dependencies to identify which services will fail within 15 minutes of a us-east-1 outage. Output: You need a spreadsheet that tells you: “If AWS control plane goes down at 3 AM, which of our services die first, how much revenue do we lose per hour, and what does it cost to fix each one?”
 
 Assign your most senior cloud engineer to audit all AWS API calls in your hot path (or hire a consultant for $15-60K if your team is underwater). Deliver a spreadsheet with every runtime control plane dependency showing: Service name, API called, blast radius (revenue impact/hour), fix cost (engineer-weeks). Sort by blast radius and allocate budget to fix the top 10.
 
-Stop It From Killing You - MEDIUM PRIORITY (EOY)
-Budget: $150-400K | Resources: 2-3 FT Eng | Outcome: 95% Vulnerability Eliminated
+### Stop It From Killing You - MEDIUM PRIORITY (EOY)
+#### Budget: $150-400K | Resources: 2-3 FT Eng | Outcome: 95% Vulnerability Eliminated
 
 Top 10 Mitigation: Take the prioritized list from your 30-day audit and fix the top 10 runtime control plane dependencies the ones that will hemorrhage when they fail. Payment processing, authentication, core application APIs. Not the “nice to haves.” Not the internal admin tools. The services that generate revenue. These ten dependencies probably account for 95% of your revenue risk. Fix those 10 and you survive the next outage. Leave them broken and you’re explaining to your board why you were down for 12 hours.
 
@@ -143,8 +143,8 @@ Sample Action Plan: Implementation sprint tackling top 10 items: Extend IAM role
 
 Build vs Buy: Build if it’s core to your business, vendor solutions don’t support your scale, or you have spare engineering capacity (lol). Buy if it’s infrastructure plumbing, vendor solutions are mature, or your engineers are underwater (which they are). Credential management: HashiCorp Vault (~$50K/year) or AWS Systems Manager (included). Service discovery: Consul (~$30K/year) or AWS Cloud Map (<$500/month). Chaos engineering: Gremlin ($36K/year) or AWS Fault Injection Simulator ($300/month).
 
-Build True Resilience (Or Accept Your Fate) - STRATEGIC PRIORITY (90 Days)
-Budget: $300K-2M | Resources: 5-10 Eng | Outcome: True Multi-Region Independence
+### Build True Resilience (Or Accept Your Fate) - STRATEGIC PRIORITY (90 Days)
+#### Budget: $300K-2M | Resources: 5-10 Eng | Outcome: True Multi-Region Independence
 
 Mandate Control Plane Independence: This is the difference between “we survived with degraded performance” (60-day goal) and “we didn’t even notice the outage” (90-day goal). This is non-negotiable if you’re a public company or processing >$100M ARR. Your 90-day work buys you competitive advantage.
 
@@ -154,70 +154,72 @@ Chaos Drill Validation & KPIs: Block all *.us-east-1.amazonaws.com at the firewa
 
 Technical Handoff: The full technical plan and detailed implementation guide for Control Plane Independence is contained in Part 2, for handover to your Lead Cloud Engineer.
 
-ROI Calculator:
+#### ROI Calculator:
 The question is no longer if a centralized control plane will fail, but when. The financial choice is simple: pay a small, predictable insurance premium for resiliency, or pay the catastrophic, exponential cost of a 15-hour outage.
 
 Investment required is for the mandated quarterly Chaos Engineering fire drills simulating a complete us-east control-plane failure. (At least annual if you’re strapped.)
 
-Investment: Total Annual Cost of the Drill Program
+- Investment: Total Annual Cost of the Drill Program
 
-Personnel Cost: 8 FTEs (Architects, SREs) at $150/hr blended rate.
+- Personnel Cost: 8 FTEs (Architects, SREs) at $150/hr blended rate.
 
-Time Commitment: 40 hours per drill x 4 drills per year. (for >$100M ARR)
+- Time Commitment: 40 hours per drill x 4 drills per year. (for >$100M ARR)
 
-Total Annual Investment (A): $192,000
+- Total Annual Investment (A): $192,000
 
-Compare that to a single, avoided loss event, that 15-hour paralysis on October 20th:
+- Compare that to a single, avoided loss event, that 15-hour paralysis on October 20th:
 
-Avoided Loss: Cost of a Single 15-Hour Outage
+- Avoided Loss: Cost of a Single 15-Hour Outage
 
-Direct Revenue Loss Rate: $500,000 per hour (Conservative Tier 0/1 estimate).
+- Direct Revenue Loss Rate: $500,000 per hour (Conservative Tier 0/1 estimate).
 
-Direct Loss Calculation: $500,000 x 15$ hours $7,500,000.
+- Direct Loss Calculation: $500,000 x 15$ hours $7,500,000.
 
-Brand/Reputation Damage Multiplier: +25% of Direct Loss for customer churn and stock impact.
+- Brand/Reputation Damage Multiplier: +25% of Direct Loss for customer churn and stock impact.
 
-Recovery/Post-Mortem Labor: $150,000 in immediate engineering costs.
+- Recovery/Post-Mortem Labor: $150,000 in immediate engineering costs.
 
-Total Avoided Loss (B): $9,525,000.
+- Total Avoided Loss (B): $9,525,000.
 
 The math is not complex:
 
-Net Gain (Savings): $9,333,000
+- Net Gain (Savings): $9,333,000
 
-Return on Investment (ROI): 4860%
+- Return on Investment (ROI): 4860%
 
 The ROI is not 150%; it is 4860%. This number is not an accounting exercise; it is an architectural mandate. For every dollar spent ensuring your systems can operate autonomously when the US-EAST-1 control plane freezes, you save forty-eight dollars by avoiding a single, predictable failure. This confirms that the value of true resilience; decoupling runtime dependencies from the global control plane is a negligible insurance premium against the catastrophe of a Von Neumann Moment.
 
-Credit Where Credit’s Due
+#### Credit Where Credit’s Due
 Finally, if you were affected by the AWS outage, here’s how to apply for credit, along with some pointers for doing so. AWS will issue Service Credits for the October 20th outage under their SLA, but they don’t make it easy. You need to file within 30 days of the incident, provide specific documentation, and follow their process exactly or your claim gets rejected.
 
 How to file:
 
-Go to AWS Support Center → Create Case → Account and Billing Support
+- Go to AWS Support Center → Create Case → Account and Billing Support
 
-Subject: “SLA Credit Request - October 20, 2025 us-east-1 Outage”
+- Subject: “SLA Credit Request - October 20, 2025 us-east-1 Outage”
 
-Provide: Affected services, impacted resources (ARNs), duration of impact, business impact statement
+- Provide: Affected services, impacted resources (ARNs), duration of impact, business impact statement
 
-Pointers for maximizing your credit:
+##### Pointers for maximizing your credit:
 
-Document everything now: CloudWatch logs showing error rates, support tickets filed during the outage, customer complaints, revenue impact calculations
+- Document everything now: CloudWatch logs showing error rates, support tickets filed during the outage, customer complaints, revenue impact calculations
 
-Be specific: “DynamoDB in us-east-1 unavailable 14:23-02:15 UTC affecting 47 production tables” beats “stuff was down”
+- Be specific: “DynamoDB in us-east-1 unavailable 14:23-02:15 UTC affecting 47 production tables” beats “stuff was down”
 
-Quantify business impact: “Processing pipeline down 12 hours, 15,000 failed transactions, estimated $250K revenue impact”
+- Quantify business impact: “Processing pipeline down 12 hours, 15,000 failed transactions, estimated $250K revenue impact”
 
-Reference the SLA: AWS promises 99.99% uptime for most services—12+ hours down blows past that threshold
+- Reference the SLA: AWS promises 99.99% uptime for most services—12+ hours down blows past that threshold
 
-File early: Don’t wait until day 29. File within the first week while details are fresh
+- File early: Don’t wait until day 29. File within the first week while details are fresh
 
 Reality check: You’ll get maybe 10-30% of your monthly AWS bill back as a credit (not cash). For a $50K/month bill, expect $5-15K in credits. Better than nothing, but nowhere near covering actual business impact. This is why the architectural fixes above matter; you can’t SLA your way out of revenue loss.
 
 The credit application deadline is November 19, 2025. Don’t leave money on the table.
 
+```
 “The companies that survived Monday’s outage weren’t lucky.
 They’d just already done the math.”
+```
 
 The Hard Truth: Yes, multi-region is expensive. Not that it helped those 85+ aforementioned companies. Your infrastructure costs increase 20-100%. Your team spends 3-6 months not building features. But your competitors are doing this. Stripe is doing this. Datadog is doing this. Snowflake is doing this. When the next outage hits and you’re down for 12 hours while they stay online, how do you explain that to your customers? The real question isn’t “Can we afford to do this?” The real question is “Can we afford not to?”
 
