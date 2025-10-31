@@ -1,4 +1,10 @@
+"""
+app_server.py
 
+Purpose: Example web application demonstrating the use of the 
+long_lived_client. It implements explicit ClientError/ExpiredToken 
+handling for graceful degradation during a control plane outage.
+"""
 import long_lived_client
 import logging
 from botocore.exceptions import ClientError
