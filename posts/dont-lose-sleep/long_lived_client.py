@@ -1,3 +1,10 @@
+"""
+long_lived_client.py
+
+Purpose: Implements the robust, fault-tolerant STS credential management 
+for long-running services. This solution uses manual threading and jitter 
+to prevent a Thundering Herd during catastrophic control plane outages.
+"""
 
 import boto3
 import threading
