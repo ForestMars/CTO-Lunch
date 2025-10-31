@@ -1,4 +1,3 @@
-# Fault-Tolerant STS Fix
 
 import boto3
 import threading
