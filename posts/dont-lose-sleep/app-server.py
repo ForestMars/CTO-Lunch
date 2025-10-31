@@ -1,4 +1,3 @@
-# app-sever.py
 
 import long_lived_client
 import logging
