@@ -2,6 +2,11 @@ This month brought us the internet's greatest achievement and its most catastrop
 
 - Archive.org crossed one trillion pages this month humanity's entire digital memory, preserved in perpetuity. Three days later, an AWS control-plane outage took down over 3,500 companies in under an hour, from fintech startups to federal contractors. The juxtaposition isn't ironic; it's diagnostic. We've built systems capable of cataloging a trillion pages but incapable of failing gracefully when a single control plane hiccups.
 
+C1
+**This month brought us the internet's greatest achievement and its most catastrophic infrastructure failure to date.** Archive.org crossed the trillion-page threshold—humanity's digital hoarder instinct made manifest—just as AWS managed to take down 85+ companies with a single outage, proving that our obsession with preserving every corner of the web doesn't extend to actually keeping it online. The irony is almost too perfect: we're archiving a trillion pages while simultaneously demonstrating we can't reliably serve the ones people actually use. And yet here we are, frantically training AI models on every scrap of human-generated text we can scrape, as if more data automatically equals better intelligence. Spoiler: it doesn't.
+
+October made this tension impossible to ignore. Atlassian launched "Rovo Dev," Cloudflare open-sourced VibeSDK for vibe-based coding, and Perplexity added insider trading tracking with politician data "coming shortly" (we'll hold our breath). But beneath the product launches, something fundamental shifted: the experimental phase of agentic AI is over. Gartner's prediction that 40% of agentic projects will be canceled by 2027 isn't forecasting technical failure—it's marking the end of the grace period where "we're experimenting with agents" was an acceptable answer. As Karpathy put it, the next decade isn't about AGI, it's about agentic systems. CTOs who haven't figured out what execution looks like are already behind.
+
 
 
 
