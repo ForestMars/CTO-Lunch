@@ -1,0 +1,18 @@
+Project Mercury: Wall Street's AI Gambit
+While the tech press obsessed over OpenAI's restructuring, something more strategically significant was happening: Project Mercury, OpenAI's initiative to automate investment banking analyst work.
+OpenAI pays contractors $150/hour to write prompts and create Excel-based models for IPOs, restructurings, and M&A deals. The goal: teach AI to replicate—and eventually automate—the tedious modeling and deck-editing work dominating junior analyst life.
+This is the most strategically significant AI deployment happening right now.
+Whoever wins financial services AI automation wins the entire enterprise AI market. Investment banking is the perfect target: high-value work ($200K+ per analyst), highly standardized (every pitch deck follows the same structure), painful enough clients will pay for automation, prestigious enough success creates a halo effect for every other enterprise vertical.
+The work Mercury targets—building comps tables, updating DCF models, reformatting decks—is simultaneously mind-numbing and critical. Get it wrong and deals don't close. Get it right and you've saved 60 hours of analyst time per engagement. A bank with 1,000 analysts achieving 50% task automation saves $100M annually.
+But the strategic value isn't cost savings—it's talent arbitrage. Banks lose their best junior talent after 2-3 years because the job is 70% Excel hell. If Mercury automates the Excel hell, banks retain talent, redeploy to higher-value work, and create moats around relationship management consulting firms can't replicate.
+Context and Background
+The competitive landscape is sparse. Bloomberg Terminal has AI features but they're hamstrung by terminal lock-in and a business model incentivizing seat licenses over productivity. Palantir's Foundry focuses on defense, not financial services. Google and Microsoft sell horizontal tools (Workspace AI, Copilot) rather than vertical solutions.
+Real competition is custom in-house builds at Goldman, Morgan Stanley, JPMorgan—who see this as core competency they can't outsource. But building internally requires ML talent that's expensive, scarce, and constantly poached by OpenAI, Google, Meta.
+OpenAI's advantage: best reasoning models, capital to subsidize development, brand prestige to attract talent banks can't retain.
+Industry Impact
+If OpenAI succeeds with Mercury, every enterprise vertical faces the question: "Build in-house or concede the automation layer to a vendor?" Financial services is the test case—work standardized enough to automate but valuable enough to justify custom tooling.
+Second-order effect: talent reallocation. Junior analyst roles historically trained future partners. If automated away, banks need new pathways for institutional knowledge and client relationships. You save $100M on analysts but lose the talent pipeline producing future leadership.
+Third-order effect: competitive moat erosion. If every bank uses the same AI tool, differentiation shifts entirely to relationship management and deal origination. This favors incumbents with deep client relationships, hurts smaller firms competing on execution quality.
+Bottom Line
+Project Mercury isn't just about automating Excel—it's about OpenAI proving they can own enterprise AI in high-value verticals. If they succeed, every CTO in financial services faces build-vs-buy where "buy" means conceding competitive differentiation to a vendor.
+
