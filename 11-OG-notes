@@ -1,0 +1,203 @@
+- CTO Lunch 🍔 Update #11 OG Notes
+    - Intro/Highlighs (2 paragraphs, knowing, insightful, flowing narrative not a laundry list)
+        
+        This month brought us the internet's greatest achievement and it’s most catastrophic infrastructure to date. 
+        
+        [Archive.org](http://Archive.org) passed the 1 trillion page mark. 
+        
+        AWS outage took out 85+ companies → [RTO](https://nypost.com/2025/10/19/business/midtown-real-estate-is-booming-with-return-to-office-in-full-swing/?utm_campaign=nypost&utm_medium=social&utm_source=twitter)
+        
+        Atlassian just launched the oddly named “Rovo Dev”
+        
+        Cloudflare open-sourced an AI vibe coding platform, VibeSDK
+        
+        https://neurosity.co/ $5M
+        
+        You can now track insider trading on [**Perplexity**](https://www.linkedin.com/company/perplexity-ai/) Finance. We will be adding politician trading shortly.
+        
+         a special patent knowledge index hosted on their ‘exabyte-scale search infrastructure’
+        
+    - The AI Revolution (Agentic edition- Secret Agent Man should be at least 35% of AI Rloveution section)
+        
+         MS did something to be making every Windows 11 PC an AI PC, enabling you to voice chat with Microsoft's Windows Copilot and allowing the bot to see your screen when you want it to and take actions at your request.
+        
+        - The death of Agentic AI has been greatly exaggerated (by Gartner)
+            
+            (Gartner predicts over 40% of agentic AI projects will be canceled by end of 2027)
+            
+            Gartner's 40% cancellation isn't predicting technical [failure.It](http://failure.it/)'s predicting the end of the experimental grace period.
+            
+        - Apple Intelligence (short subsection under AI Rloveution)
+            
+            M5 [neural engine](https://github.com/hollance/neural-engine) (ANE) improvements (?) 
+            MLX doesn’t use neural engine tho in theory it can via CoreML
+            
+            [ANE transformers](https://github.com/apple/ml-ane-transformers)
+            
+            Naturally foundation models use ANE 
+            
+            but ANE not having a native programming model is shall we say [problematic](https://news.ycombinator.com/item?id=45591799) to say the least 
+            
+            M6 should be the game changer? M5 has nuts and bolts but not nec pret a porter. 
+            
+            Apple HW teams lapping SW teams, but is this by design or…? 
+            
+            “All things considered I’d much prefer a PC running Mac OS X to a Mac running Windows.” -[Gruber](https://daringfireball.net/2009/11/the_os_opportunity)
+            
+        - OpenAI’s latest whatever
+            - OpenAI was restructured into a public benefit corporation valued at $500B.
+                
+                29 - Microsoft got: 27% stake worth $135B, $250B in guaranteed Azure rev, rights to OpenAI’s IP “until AGI or 2030.”
+                
+                Even NYT calling OpenAI’s funding deals “circular” 
+                
+                Not to even mention $2.5B in stock comp for about 3,000 employees. that’s roughly $830k per person in just six months. Almost 60% of their revenue went straight back to staff
+                
+                Harvard law professor Lawrence Lessig filed an amicus brief on behalf of 12 former OpenAI employees 
+                
+            - ChatGPT Atlas. GA for macOS on 10/21 http://chatgpt.com/atlas (Um… Android??)
+                
+                need to compare it to comet, maybe even arc/dia, (and any others) but moreover talk about WHY the browser play is so whatever (and why facebook or X doesn’t have/need one) and the power imbalance between openai and perplexity, but mainly talking about the future of the web, elon just said it’s not even a browser, it’s a device that can instantly create whatever ai video you want, and most everything else fades out (except for actual non-entertainment functions, booking flights, hotels, which will be increasingly automated by agents but remember this is a blog for CTOs not general knowledge those tasked with BUILDING this future and making critical decisions (bets!) along the way. And all of that is literally just a digression on the Atlas release. 
+                
+            - OAI Project Mercury → oh snap didn’t ask about Project Mercury
+                
+                Codenamed “Project Mercury,” the effort pays contractors $150 an hour to write prompts and create Excel-based models for IPOs, restructurings, and M&A deals. The goal? To teach AI how to replicate, and eventually automate, the tedious modeling and deck-editing work that dominates life for junior analysts.
+                
+                - Let’s make this very serious, an indepth analysis of it. Whoever wins this one wins big. Who is competing for this same market?
+        - Model Mayhem (monthly recap of model releases with insights)
+            - Alibaba chooses to close-source Qwen Max
+            - Claude Haiku 4.5,
+                - Haiku 4.5 is a big step up, roughly doubling Haiku 3.5’s performance.
+                    - But on these real-world tasks, it trails far behind Sonnet 4.5.
+                
+                73% on SWE-Bench verified and 41% on the command-line-focused Terminal-Bench 
+                
+                below Sonnet 4.5, but on par with Sonnet 4, GPT-5, and Gemini 2.5
+                
+                 Sonnet handling complex planning while Haiku-powered sub-agents execute at speed -Anthropic CPO Mike Krieger (c3po/3cpo)
+                
+                one year after last haiku version (3.5 on 10/23/24) 
+                
+            
+            Grokopedia (at least a sentence comparing to wikipedia in terms of freshness and citations, if objectivity is a harder (though not unanswerable) question
+            
+        - Secret Agent Man (This is the meat of this month’s AI Rloveution, on Agentic AI)
+            - (LangChain vs Mastra) [[comp](https://chatgpt.com/c/68e99508-2b74-8320-891d-8b795dff85ba)]
+                - Declarative graph vs Reactive runtime (event-driven)
+                    - LangChain’s runnable pipeline, interface only (memory optional, externalized)
+                        - langchain is function or dataflow driven
+                    - Mastra - long-running process not call graph, state container built-in
+                        - Mastra doesn’t treat an “agent” as a function call — it treats it as an actor in an event loop.
+                - LangChain = a compiler for LLM pipelines (dataflow evaluation).
+                Mastra = a runtime for LLM agents (reactive orchestration).
+                - Mastra is fantastic for long-lived agents, but overkill for on-demand inference or batch processing.
+                - Langchain if you already have a control plane you need it to plug into (eg. your orchestration platform such as airflow, prefect or even dagster) when you want the control plane to be the application runtime itself.
+                - Mastra
+    - Python Sheds its Skin (PEP 703)
+        - [python 3.14](https://www.notion.so/2025-Q3-16a6e5ab53ad8059b22bfa66b9f62bb8?pvs=21) released
+            - Python 3.14 now includes built-in Zstandard compression
+                - For years, gzip has been Python's built-in compression standard. Now Python 3.14 adds Zstandard as a faster, more efficient alternative.
+                - The example compresses an 18.29MB log file with Zstandard. Zstandard is 10.4x faster than gzip and produces a file that's 3.3x smaller.
+                - Zstandard allows you to control the compression level, from 1 (fastest) to 22 (best compression).
+            
+            modern python - uv tooling, async, switch and := syntax, 
+            
+            - strict mypy almost everywhere
+            - does modern python have problems with workflows and type safety?
+            
+            [Type annotations and type-checking in Python still feel like mere suggestions,](https://kix.dev/python-feels-sucky-to-use-now/)
+            
+            Python is all the way up to version 3.14, but can it catch up with TS? (Mastra was literally created as a reaction to the “pollution of the ecosystem” by Python!)
+            
+            compare modern Python with the “modern type stack” we’ve been describing in previous editions of CTO lunch, where the modern app stack is evolving to provide guardrails for agentic ai, even as python continues to dominate the backend (and moreover, data pipelines) 
+            
+        - “free-threaded python”
+            
+            “RIP GIL”
+            
+            Free-threaded Python (available since Python 3.13) refers to Python builds that are compiled with the GIL (Global Interpreter Lock) disabled
+            
+             the adoption of free-threaded wheels among the top 360 most-downloaded PyPI packages with C extensions is still limited. Only 128 out of these 360 packages
+            
+        - Python declines NSF grant (Coda on Python declining grant, landing on white space joke mic drop.)
+            
+            “operate any programs that advance or promote DEI  or discriminatory equity ideology in violation of Federal anti-discrimination laws.”
+            
+            Are they saying there’s no way to promote healthy and diverse communities without breaking federal law? 
+            That’s the thing with diversity, there’s always more of it. Until the heat death of the universe, anyway. 
+            
+            “Python declined $1.5M because no one could agree on the indentation rules for morality.”
+            
+            - Whitespace jokes
+                
+                “So… whitespace *is* important after all.” 🕶️
+                
+                “So you’re telling us whitespace is important after all?”
+                
+                “Python devs always said whitespace matters. Didn’t think it’d come to this.”
+                
+                "still arguing about whitespace" 
+                
+                “Different decade, same repo: still arguing about whitespace.”
+                
+                “Ten million lines of code later, and we’re still arguing about whitespace.”
+                
+                “No matter how big the issue, Python always finds a way to make it about whitespace.”
+                
+            
+            So, white space is important? 
+            
+    - RIP The Modern Data Stack
+        
+         ([died or merged](https://news.ycombinator.com/item?id=45568842))  [Gemini](https://gemini.google.com/app/2989f58937e5d42b)
+        
+        - [supabase](https://x.com/supabase) has acquired Triplit, an offline-first database
+        
+        Following on last month’s acquisition of Tobiko (maker of SQLMesh), Fivetran (5-600M ARR against $5.6B valuation) is merging’ with  SQLMesh competitor dbt (100M ARR against $4.2 valuation) in an all stock deal estimated at potentially over $10 billion. What does this mean for CTOs evolving your companies DataOps? Most likely that SQLMesh is going away, though they likely will not kill it outright but just stop adding features, making a switch to dbt not just necessary to keep up with data stack evolution, but potentially an easier migration using Fivetran. 
+        
+        Fivetran previously acquired Census (reverse-etl) & Tobiko (dbt alternative).
+        
+        Airbyte who raised 150m at 1.5b in 2023
+        
+        Is Observability how we now capture value across the entire stack?
+        
+        How is MDS aligned to compete legacy MDM providers like Informatica or Catalogs like Atlan (not to mention Unity Catalog) 
+        
+        Is MDM being displaced by Observability? (360° view) 
+        
+        ingestion (Fivetran) vs transformation (DBT) are the peanut butter and chocolate of data engineering 
+        
+        fivetran still under $500M in rev; MDS still relatively small compared to data warehouses / data lakes
+        
+        dbt-core vs dbt Fusion 
+        
+        The real winner here is of course SQL. 
+        
+        [**China Is Shipping More Open AI Models Than US Rivals as Tech Competition Shifts**](https://slashdot.org/story/25/10/13/1719227/china-is-shipping-more-open-ai-models-than-us-rivals-as-tech-competition-shifts)
+        
+    - RSC (Risk, Security & Compliance)
+        
+        Following up on September’s Sharepoint hack, for anyone that downplayed its criticality: 
+        
+        [**Foreign Hackers Breached a US Nuclear Weapons Plant Via SharePoint Flaws**](https://it.slashdot.org/story/25/10/20/2139236/foreign-hackers-breached-a-us-nuclear-weapons-plant-via-sharepoint-flaws)
+        
+        - (Anything else ee need to include from RSC this month)
+    - Web3 Watercooler
+        
+        web 3 - largest liquidation event ever flash crash on 10/10, apparently in wake of then latest tariff announcements 
+        
+        - stablecoins
+            
+            The bank lobby is furious about stablecoin yield under the GENIUS Act. They're calling it a "loophole" that needs closing.
+            
+            The GENIUS Act prohibits stablecoin issuers from paying interest directly to holders. Banks claim issuers are skirting this by paying third parties (like exchanges), who then offer rewards or yield to users.
+            
+            Treasury estimates this could drain $6.6 trillion from bank deposits.
+            
+            https://x.com/sytaylor/status/1974807300960399634
+            
+        - cross-chain integrations
+            
+            ICP. You can integrate with ETH, BTC, SOL, and basically any other chain, natively. Meaning you can send and receive BTC and ETH around near instant and near free. Look at Omnity and odin.fun.
+            
+        - [fun.xyz](http://fun.xyz) (powers Polymarket checkout cart)
