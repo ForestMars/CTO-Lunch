@@ -1,0 +1,9 @@
+- RSC (sharepoint)
+    
+    Following up on September's SharePoint hack: for anyone who downplayed its criticality, **foreign hackers breached a US nuclear weapons plant via SharePoint flaws**. The CVE-2025-49596 remote code execution vulnerability that Microsoft initially described as "moderate severity" just compromised classified national security infrastructure.
+    
+    This isn't a "patch your systems" reminder. This is a **"your entire threat model is wrong"** alarm. The attack chain went: SharePoint vulnerability → network pivot → exfiltration of sensitive data from a facility that processes nuclear materials. The vulnerability was exploited in the wild for months before the breach was detected. Microsoft's response was to issue a patch and move on. No acknowledgment of the offshore engineering team that maintains SharePoint on-prem. No explanation of how a "moderate severity" bug became a nation-state attack vector.
+    
+    For CTOs, the lesson is blunt: **SaaS vendor security ratings are theater**. Microsoft has SOC 2, FedRAMP, every compliance cert you can name. They still shipped a vulnerability that compromised a nuclear facility. The next time a vendor shows you their security questionnaire, remember that compliance certifications are about covering liability, not preventing breaches.
+    
+    The modern threat model assumes your vendors are compromised, your supply chain is hostile, and your perimeter doesn't exist. Design accordingly.
