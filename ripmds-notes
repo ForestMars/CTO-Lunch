@@ -1,0 +1,10 @@
+Fivetran and dbt merged in a $10B all-stock deal.
+SQLMesh is the collateral damage.
+
+The peanut butter and chocolate of data engineering — ingestion (Fivetran) and transformation (dbt) — just merged into a single jar labeled “Observability.” The modern data stack isn’t dead; it’s converging.
+Meanwhile, Supabase quietly acquired Triplit (offline-first database), and Airbyte, last seen raising $150M at a $1.5B valuation, is still trying to stay relevant in the age of event-driven everything.
+
+The biggest question for CTOs:
+If ingestion and transformation are now table stakes, where’s the new leverage?
+Answer: 360° data observability.
+The next gold rush is not data lakes, but data mirrors.
