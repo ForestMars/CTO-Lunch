@@ -1,0 +1,27 @@
+- OpenAI Season
+    
+    OpenAI restructured into a public benefit corporation valued at $500B. Microsoft got a 27% stake worth $135B, $250B in guaranteed Azure revenue, and rights to OpenAI's IP "until AGI or 2030" (whichever comes first, presumably). Even the New York Times is calling OpenAI's funding deals "circular," which is journalist-speak for "this is absurd but we can't quite prove fraud."
+    
+    The math is staggering: $2.5B in stock compensation for about 3,000 employees. That's roughly $830K per person in just six months. Almost 60% of their revenue went straight back to staff. This isn't a tech company—it's a hedge fund that happens to train neural networks. Harvard law professor Lawrence Lessig filed an amicus brief on behalf of 12 former OpenAI employees, which should tell you everything about how sustainable this corporate structure feels to people who've actually seen the internals.
+    
+    **ChatGPT Atlas** went GA for macOS on October 21 (http://chatgpt.com/atlas), with Android users left staring wistfully at their notification-less screens. The browser play is interesting less for what it *is* and more for what it reveals about OpenAI's strategic position. Compare to Comet, or even Arc/Dia, and you start asking: why does OpenAI need a browser when Facebook and X don't?
+    
+    The answer is control. Perplexity can build a search product because they don't control the distribution. OpenAI needs to control distribution because they're terrified someone else will commoditize the model layer. Elon's already saying it's not even a browser—it's a device that can instantly create whatever AI-generated video you want, with everything else fading out except "actual non-entertainment functions" like booking flights and hotels, which will be increasingly automated by agents anyway.
+    
+    For CTOs, the strategic lesson is clear: **the browser is a distribution play, not a product play**. If you're building AI-powered products, the question isn't "should we build a browser" but "do we control distribution or are we renting it from someone else?" OpenAI is betting they need to own the last mile. The market will determine if they're right, but the $500B valuation suggests a lot of smart money thinks they are.
+    
+    **Project Mercury: Wall Street's AI Gambit**
+    
+    Codenamed "Project Mercury," OpenAI is paying contractors $150/hour to write prompts and create Excel-based models for IPOs, restructurings, and M&A deals. The goal? To teach AI how to replicate—and eventually automate—the tedious modeling and deck-editing work that dominates life for junior analysts at investment banks.
+    
+    This is the most strategically significant AI deployment happening right now, and almost no one is paying attention.
+    
+    Here's why it matters: **whoever wins the financial services AI automation market wins the entire enterprise AI market**. Investment banking is the perfect target: high-value work (junior analysts cost $200K+ all-in), highly standardized (every pitch deck follows the same structure), painful enough that clients will pay for automation, and prestigious enough that success creates a halo effect for every other enterprise vertical.
+    
+    The work Mercury is targeting—building comps tables, updating DCF models, reformatting slide decks to match brand guidelines—is simultaneously mind-numbing and absolutely critical. Get it wrong and the deal doesn't close. Get it right and you've just saved 60 hours of analyst time per engagement. At $200K annual cost per analyst, a bank with 1,000 analysts and 50% task automation just saved $100M annually.
+    
+    But the strategic value isn't cost savings—it's **talent arbitrage**. Investment banks lose their best junior talent after 2-3 years because the job is 70% Excel hell and 30% actual finance. If Mercury can automate the Excel hell, banks can retain talent, redeploy them to higher-value work, and create a moat around relationship management that consulting firms can't replicate.
+    
+    Who's competing for this market? Bloomberg Terminal with AI features, but they're hamstrung by terminal lock-in and a business model that incentivizes seat licenses over productivity. Palantir's Foundry platform, but their focus is defense and national security, not financial services. Google and Microsoft, but they're selling horizontal tools (Workspace AI, Copilot) rather than vertical solutions. The real competition is custom in-house builds at Goldman, Morgan Stanley, and JP Morgan, who see this as a core competency they can't outsource.
+    
+    OpenAI's advantage is simple: they have the best reasoning models, the most comprehensive training data partnerships, and the capital to subsidize development until the product is unbeatable. If Mercury works, they'll own financial services AI for a decade. If it doesn't, they've just spent $50M learning how *not* to automate one of the most valuable white-collar workflows in existence. Either way, CTOs in financial services should be paying very close attention, because this is a preview of your 2026 budget conversations.
