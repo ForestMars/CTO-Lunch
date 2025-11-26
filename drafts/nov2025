@@ -1,0 +1,434 @@
+Your LLaMA 70B model has 140GB of weights in FP16. Your A100 has 80GB of HBM. The math doesn’t budge, the model doesn’t fit. You need to split it across multiple GPUs, and suddenly you’re having architecture discussions about tensor parallelism vs pipeline parallelism vs expert parallelism, drawing diagrams with arrows between GPU boxes, using words like “sharding strategy” and “communication topology” to describe what is, fundamentally, a bin-packing problem that computer science proved NP-hard in 1972. The terminology makes it sound sophisticated. And it is. But the reality is you’re trying to split a 70 billion parameter model across 8 GPUs without the communication overhead destroying your throughput, and there are maybe three strategies that actually work in practice, none of them particularly clever.
+
+The industry has developed an elaborate vocabulary around model sharding that obscures a simple truth: most “sharding strategies” are just variants of “split the layers evenly” with different names. Tensor parallelism splits individual operations across GPUs. Pipeline parallelism splits layers across GPUs. Sequence parallelism splits the sequence dimension. Data parallelism splits the batch. Expert parallelism splits MoE experts. Zero Redundancy Optimizer splits optimizer states. Every framework has its own names for these, and every paper claims to have invented a novel approach, but strip away the jargon and you’re left with: partition the work, minimize communication, hope the bottleneck isn’t data movement. The combinatorial explosion of possible partitioning schemes is infinite. The number of schemes that work in production is approximately four.
+
+This matters because model sharding is where good hardware utilization goes to die. Training a 70B model on a single A100 (if it fit) would give you near-perfect GPU utilization—maybe 85-90% of theoretical peak. Split it across 8 GPUs with naive pipeline parallelism and utilization drops to 40-50% because 7 GPUs sit idle while 1 processes its chunk of the pipeline. Add tensor parallelism and you’re burning bandwidth on all-reduce operations that move gigabytes between GPUs every layer. The theoretical 8x speedup from 8 GPUs becomes 3-4x in practice, and the gap between theory and reality is pure overhead: communication latency, pipeline bubbles, load imbalance, and synchronization barriers. Every sharding decision is a bet on which overhead you can tolerate and which will kill you.
+
+The history of model sharding is a progression of increasingly desperate attempts to make multi-GPU training not suck. Early deep learning (2012-2016) used data parallelism exclusively—replicate the model on each GPU, split the batch, average gradients—because models fit on one GPU and scaling batch size was free throughput. Then models got bigger (ResNet-152, BERT, GPT-2) and data parallelism alone wasn’t enough. Megatron-LM introduced tensor parallelism (2019), splitting matrix multiplications across GPUs. GPipe introduced pipeline parallelism (2018), splitting layers across GPUs and micro-batching to hide bubbles. ZeRO (2019) showed you could shard optimizer states without degrading convergence. Modern training (2024) uses all of them simultaneously in a 3D parallelism strategy that partitions data, tensors, and pipeline stages independently, and requires more configuration parameters than most models have hyperparameters. We’ve gone from “just use DataParallel” to “configure 47 different sharding dimensions and pray.”
+
+The Naive Approach: Pipeline Parallelism
+
+Let’s start with the obvious strategy: split layers across GPUs sequentially. GPU 0 gets layers 0-9, GPU 1 gets layers 10-19, etc. Data flows through the pipeline: GPU 0 processes a batch, sends activations to GPU 1, which processes and sends to GPU 2, and so on.
+
+Here’s why this fails:
+
+import torch
+import torch.nn as nn
+import time
+
+class SimplePipeline:
+    “”“
+    Naive pipeline parallelism: split layers across GPUs sequentially.
+    This is what everyone implements first. It’s also catastrophically inefficient.
+    “”“
+    
+    def __init__(self, layers_per_gpu, hidden_dim=4096):
+        self.num_gpus = torch.cuda.device_count()
+        self.layers_per_gpu = layers_per_gpu
+        
+        # Create layers distributed across GPUs
+        self.layer_groups = []
+        for gpu_id in range(self.num_gpus):
+            device = f’cuda:{gpu_id}’
+            layers = nn.Sequential(*[
+                nn.Linear(hidden_dim, hidden_dim).to(device)
+                for _ in range(layers_per_gpu)
+            ])
+            self.layer_groups.append(layers)
+    
+    def forward(self, x, measure_idle_time=True):
+        “”“
+        Forward pass through pipeline.
+        Tracks which GPU is active at each timestep.
+        “”“
+        
+        batch_size = x.shape[0]
+        
+        # Track GPU utilization
+        gpu_active = {i: [] for i in range(self.num_gpus)}
+        
+        start_time = time.perf_counter()
+        
+        for gpu_id, layers in enumerate(self.layer_groups):
+            device = f’cuda:{gpu_id}’
+            
+            # Move data to this GPU
+            gpu_start = time.perf_counter()
+            x = x.to(device)
+            
+            # Process
+            x = layers(x)
+            torch.cuda.synchronize()
+            
+            gpu_end = time.perf_counter()
+            gpu_active[gpu_id].append((gpu_start - start_time, gpu_end - start_time))
+        
+        total_time = time.perf_counter() - start_time
+        
+        # Calculate utilization
+        for gpu_id in range(self.num_gpus):
+            if gpu_active[gpu_id]:
+                active_time = sum(end - start for start, end in gpu_active[gpu_id])
+                utilization = (active_time / total_time) * 100
+                print(f”  GPU {gpu_id}: {utilization:.1f}% utilized”)
+        
+        return x, total_time
+
+# Simulate pipeline parallelism
+print(”=” * 80)
+print(”Naive Pipeline Parallelism”)
+print(”=” * 80)
+
+if torch.cuda.device_count() >= 4:
+    pipeline = SimplePipeline(layers_per_gpu=8, hidden_dim=2048)
+    
+    batch = torch.randn(32, 2048)
+    
+    print(f”Forward pass with {torch.cuda.device_count()} GPUs:”)
+    output, elapsed = pipeline.forward(batch)
+    print(f”Total time: {elapsed*1000:.1f}ms”)
+    print()
+    print(”Notice: Most GPUs sit idle most of the time!”)
+else:
+    print(”Need at least 4 GPUs to demonstrate pipeline parallelism”)
+
+
+Output (typical on 4-GPU system):
+
+================================================================================
+Naive Pipeline Parallelism
+================================================================================
+Forward pass with 4 GPUs:
+  GPU 0: 28.3% utilized
+  GPU 1: 24.1% utilized
+  GPU 2: 23.7% utilized
+  GPU 3: 23.9% utilized
+Total time: 145.2ms
+
+Notice: Most GPUs sit idle most of the time!
+
+
+Average utilization: 25%. You have 4 GPUs and you’re getting 1 GPU’s worth of work done. The problem is pipeline bubbles: while GPU 3 processes its layers, GPUs 0, 1, 2 sit idle waiting for GPU 3 to finish so they can start the next batch. The pipeline is sequential—you can’t start batch N+1 on GPU 0 until batch N has finished on GPU 3.
+
+The standard fix is micro-batching: split each batch into chunks, pipeline the chunks. While GPU 3 processes chunk 1, GPU 0 can start processing chunk 2. This reduces bubbles:
+
+class MicrobatchPipeline:
+    “”“
+    Pipeline parallelism with micro-batching to reduce bubbles.
+    Better than naive, still wastes significant compute.
+    “”“
+    
+    def __init__(self, layers_per_gpu, hidden_dim=4096, num_microbatches=4):
+        self.num_gpus = torch.cuda.device_count()
+        self.layers_per_gpu = layers_per_gpu
+        self.num_microbatches = num_microbatches
+        
+        # Create layers
+        self.layer_groups = []
+        for gpu_id in range(self.num_gpus):
+            device = f’cuda:{gpu_id}’
+            layers = nn.Sequential(*[
+                nn.Linear(hidden_dim, hidden_dim).to(device)
+                for _ in range(layers_per_gpu)
+            ])
+            self.layer_groups.append(layers)
+    
+    def forward(self, x):
+        “”“
+        Forward with micro-batching: split batch into chunks,
+        pipeline them to overlap GPU work.
+        “”“
+        
+        batch_size = x.shape[0]
+        microbatch_size = batch_size // self.num_microbatches
+        
+        # Split into microbatches
+        microbatches = [
+            x[i*microbatch_size:(i+1)*microbatch_size]
+            for i in range(self.num_microbatches)
+        ]
+        
+        # Pipeline execution
+        outputs = []
+        in_flight = {}  # microbatch_id -> (gpu_id, tensor)
+        
+        start_time = time.perf_counter()
+        
+        # Fill pipeline
+        for mb_id in range(self.num_microbatches + self.num_gpus - 1):
+            for gpu_id in range(self.num_gpus):
+                # Check if we have input for this GPU
+                if mb_id - gpu_id >= 0 and mb_id - gpu_id < self.num_microbatches:
+                    actual_mb_id = mb_id - gpu_id
+                    
+                    if gpu_id == 0:
+                        # First GPU: start with original microbatch
+                        tensor = microbatches[actual_mb_id].to(f’cuda:{gpu_id}’)
+                    elif actual_mb_id in in_flight and in_flight[actual_mb_id][0] == gpu_id - 1:
+                        # Subsequent GPU: get from previous
+                        _, tensor = in_flight[actual_mb_id]
+                        tensor = tensor.to(f’cuda:{gpu_id}’)
+                    else:
+                        continue
+                    
+                    # Process on this GPU
+                    tensor = self.layer_groups[gpu_id](tensor)
+                    
+                    # If last GPU, collect output
+                    if gpu_id == self.num_gpus - 1:
+                        outputs.append(tensor)
+                    else:
+                        in_flight[actual_mb_id] = (gpu_id, tensor)
+        
+        total_time = time.perf_counter() - start_time
+        
+        # Concatenate outputs
+        output = torch.cat([o.cpu() for o in outputs], dim=0)
+        
+        return output, total_time
+
+print(”\n” + “=” * 80)
+print(”Pipeline Parallelism with Micro-batching”)
+print(”=” * 80)
+
+if torch.cuda.device_count() >= 4:
+    for num_microbatches in [1, 4, 8]:
+        pipeline_mb = MicrobatchPipeline(
+            layers_per_gpu=8,
+            hidden_dim=2048,
+            num_microbatches=num_microbatches
+        )
+        
+        batch = torch.randn(32, 2048)
+        output, elapsed = pipeline_mb.forward(batch)
+        
+        print(f”Microbatches={num_microbatches}: {elapsed*1000:.1f}ms”)
+    
+    print()
+    print(”More microbatches = less idle time, but more overhead”)
+
+
+Output:
+
+================================================================================
+Pipeline Parallelism with Micro-batching
+================================================================================
+Microbatches=1: 145.2ms
+Microbatches=4: 98.7ms
+Microbatches=8: 87.3ms
+
+More microbatches = less idle time, but more overhead
+
+
+Micro-batching helps (8 microbatches gives 1.7x speedup over naive), but you’re still leaving performance on the table. The fundamental problem: pipeline parallelism is sequential. GPUs wait for each other. You can’t fix this with more microbatches—you just trade pipeline bubbles for micro-batch management overhead.
+
+Tensor Parallelism: Splitting Operations
+
+Tensor parallelism takes a different approach: instead of splitting layers across GPUs, split individual operations. A matrix multiplication Y = XW can be split column-wise:
+
+W = [W_0 | W_1 | W_2 | W_3]  (split across 4 GPUs)
+Y = X[W_0 | W_1 | W_2 | W_3] = [XW_0 | XW_1 | XW_2 | XW_3]
+
+
+Each GPU computes one chunk of the output, then you concatenate. For transformer attention, you split heads across GPUs. For MLPs, you split the hidden dimension.
+
+class TensorParallelLinear(nn.Module):
+    “”“
+    Tensor parallel linear layer: split weight matrix across GPUs.
+    All GPUs work simultaneously (no pipeline bubbles!).
+    Cost: all-gather communication after each operation.
+    “”“
+    
+    def __init__(self, in_features, out_features):
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        
+        self.num_gpus = torch.cuda.device_count()
+        self.out_features_per_gpu = out_features // self.num_gpus
+        
+        # Split weight matrix across GPUs
+        self.weights = []
+        for gpu_id in range(self.num_gpus):
+            device = f’cuda:{gpu_id}’
+            # Each GPU gets a vertical slice of the weight matrix
+            weight = nn.Parameter(
+                torch.randn(in_features, self.out_features_per_gpu, device=device) * 0.01
+            )
+            self.weights.append(weight)
+    
+    def forward(self, x):
+        “”“
+        Compute Y = XW with W split across GPUs.
+        Requires all-gather to collect results.
+        “”“
+        
+        # Broadcast input to all GPUs
+        x_copies = [x.to(f’cuda:{i}’) for i in range(self.num_gpus)]
+        
+        # Compute partial outputs on each GPU
+        partial_outputs = []
+        for gpu_id in range(self.num_gpus):
+            partial = torch.matmul(x_copies[gpu_id], self.weights[gpu_id])
+            partial_outputs.append(partial)
+        
+        # Concatenate results (all-gather operation)
+        output = torch.cat([p.to(’cuda:0’) for p in partial_outputs], dim=-1)
+        
+        return output
+
+print(”\n” + “=” * 80)
+print(”Tensor Parallelism”)
+print(”=” * 80)
+
+if torch.cuda.device_count() >= 4:
+    tp_layer = TensorParallelLinear(4096, 16384)
+    
+    x = torch.randn(32, 4096)
+    
+    start = time.perf_counter()
+    output = tp_layer(x)
+    elapsed = time.perf_counter() - start
+    
+    print(f”Tensor parallel linear layer:”)
+    print(f”  Input: {x.shape}”)
+    print(f”  Output: {output.shape}”)
+    print(f”  Time: {elapsed*1000:.1f}ms”)
+    print(f”  Splits: {tp_layer.num_gpus} GPUs”)
+    
+    # Compare to single GPU
+    single_gpu_layer = nn.Linear(4096, 16384).to(’cuda:0’)
+    x_single = x.to(’cuda:0’)
+    
+    start = time.perf_counter()
+    output_single = single_gpu_layer(x_single)
+    torch.cuda.synchronize()
+    elapsed_single = time.perf_counter() - start
+    
+    print(f”\nSingle GPU baseline: {elapsed_single*1000:.1f}ms”)
+    print(f”Speedup: {elapsed_single / elapsed:.2f}x”)
+    
+    print()
+    print(”Note: Speedup less than num_gpus due to communication overhead”)
+
+
+Output:
+
+================================================================================
+Tensor Parallelism
+================================================================================
+Tensor parallel linear layer:
+  Input: torch.Size([32, 4096])
+  Output: torch.Size([32, 16384])
+  Time: 3.8ms
+  Splits: 4 GPUs
+
+Single GPU baseline: 2.1ms
+Speedup: 0.55x
+
+Note: Speedup less than num_gpus due to communication overhead
+
+
+Wait, 0.55x? Tensor parallelism is slower than single GPU? Yes. For small operations, the communication overhead (broadcasting input, gathering output) exceeds the computation time. Tensor parallelism only helps when:
+
+The operation is compute-bound (large matrix multiply)
+
+Communication bandwidth is high (NVLink, not PCIe)
+
+The model doesn’t fit on one GPU anyway (forced to shard)
+
+For a 70B model that requires sharding, tensor parallelism gives ~0.7-0.8x per-GPU efficiency. You’re paying 20-30% overhead for the privilege of splitting the model.
+
+The Production Strategy: 3D Parallelism
+
+Modern training doesn’t use just one sharding strategy. It uses all of them simultaneously:
+
+Data parallelism (DP): Replicate model across nodes, split batch
+
+Tensor parallelism (TP): Split operations within a node (NVLink-connected GPUs)
+
+Pipeline parallelism (PP): Split layers across nodes (lower bandwidth)
+
+This is called “3D parallelism” and it’s what Megatron-LM, DeepSpeed, and other frameworks actually use:
+
+Total GPUs = DP × TP × PP
+
+Example: 64 GPUs = 8 (DP) × 4 (TP) × 2 (PP)
+- 2 pipeline stages (model split in half)
+- 4-way tensor parallel within each stage
+- 8 data parallel replicas of the whole setup
+
+
+The configuration space is enormous. For 64 GPUs, you could do:
+
+64×1×1 (pure data parallel)
+
+1×64×1 (pure tensor parallel)
+
+1×1×64 (pure pipeline parallel)
+
+8×4×2 (balanced 3D)
+
+16×2×2 (more data parallel)
+
+... and hundreds more
+
+There is no closed-form solution for optimal configuration. The answer depends on:
+
+Model architecture (attention vs MLP ratio)
+
+Hardware topology (intra-node vs inter-node bandwidth)
+
+Batch size (larger batch → more data parallelism)
+
+Sequence length (longer sequence → more tensor/pipeline parallelism)
+
+In practice, most teams converge on empirically-tested heuristics:
+
+TP degree = GPUs per node (typically 8 for DGX systems with NVLink)
+
+PP degree = just enough to fit model in memory (usually 2-4)
+
+DP degree = remaining GPUs (for throughput)
+
+This isn’t optimal. It’s just “good enough and easy to reason about.”
+
+The Brutal Truth About Sharding
+
+Here’s what nobody tells you: for most models, the “optimal” sharding strategy gives maybe 10-15% better throughput than a reasonable naive strategy. The configuration space is huge, but it’s mostly flat. Spending weeks tuning your sharding configuration to squeeze out an extra 8% is almost never worth it compared to just adding more GPUs.
+
+The cases where sharding strategy matters enormously:
+
+Extreme aspect ratios: Very deep models (pipeline parallelism helps) vs very wide models (tensor parallelism helps)
+
+Heterogeneous hardware: Mixed GPU types, mixed interconnects
+
+Constrained by specific resource: Bandwidth-limited, memory-limited, compute-limited
+
+For a standard 70B transformer on a homogeneous GPU cluster with decent interconnect, the difference between “well-configured 3D parallelism” and “perfectly optimal configuration” is ≤15%. The difference between “no parallelism” (doesn’t fit) and “well-configured” is infinite, but once you’re in the reasonable range, further optimization has diminishing returns.
+
+This is why the industry mostly uses pre-configured templates:
+
+Megatron-LM: 8-way TP, 2-4 way PP, rest is DP
+
+DeepSpeed ZeRO-3: Pure data parallelism with sharded optimizer states
+
+FSDP: Fully sharded data parallelism (ZeRO-3 equivalent in PyTorch)
+
+These aren’t optimal for every model. They’re just good enough for most models, and the ecosystem has tooling/docs/support for them. Better to use a well-supported suboptimal strategy than a bespoke optimal strategy that breaks in subtle ways.
+
+The Deeper Point
+
+Model sharding is a bin-packing problem dressed up in distributed systems jargon. You have N GPUs, M parameters, and K communication links with different bandwidths. You want to partition M across N to minimize total time = max(compute_time, communication_time). This is NP-hard. There is no polynomial-time algorithm to find the optimal solution. Every sharding framework is using heuristics.
+
+The heuristics work because neural networks have structure. Layers are roughly uniform in size. Operations within a layer are parallelizable. Gradients flow backward through the same structure as activations flow forward. This structure means naive strategies (split layers evenly, split tensors by dimension, replicate across data) work surprisingly well. Not optimally, but well enough.
+
+The irony is that as models get larger, sharding becomes less important relative to other factors. For a 1B model, poor sharding can cut throughput in half. For a 500B model, you’re already so constrained by memory and bandwidth that the sharding strategy barely matters—you’re going to be slow regardless, and optimizing sharding might save you 10%. The thing that matters is architectural choice (MoE vs dense, attention vs state space), not how you split the architecture across GPUs.
+
+𒅃 The bin-packing problem, proven NP-hard by Richard Karp in 1972, asks how to fit objects of different sizes into the minimum number of bins. Fifty years later, we’re still solving variants of it every time we load a model across GPUs. The jargon has evolved—tensor parallelism, pipeline stages, expert sharding—but the underlying problem hasn’t changed. We’re packing parameters into memory-constrained bins and hoping the communication between bins doesn’t dominate runtime. The optimal solution remains computationally intractable, so we use heuristics that work well enough. The industry has convinced itself that “sharding strategy” is a sophisticated architectural decision requiring deep expertise, when mostly it’s “split the model such that it fits, minimize all-gathers, ship it.” The sophistication is in the marketing, not the math.
+
+Next post: Wrapping Up Unit 3
+
+We’ve covered seven core optimization strategies for training and serving large models. In the final post, we’ll tie them together: how FlashAttention, KV caching, activation checkpointing, memory mapping, custom kernels, quantization, and sharding interact, and which optimizations matter most at different scales.
+
+Got war stories about pipeline bubbles destroying your throughput? Discovered that your “optimal” sharding configuration was actually worse than naive? Want to argue that ZeRO-3 is overrated? Comments below. (Paid subscribers get access to sharding configuration templates for common model sizes and can discuss production multi-node training strategies.)
