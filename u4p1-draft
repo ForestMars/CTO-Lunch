@@ -1,0 +1,645 @@
+# Multi-Head Attention from Scratch: Matrix Operations, Masking, Positional Encodings
+
+You've read "Attention is All You Need" so many times you keep a copy in your glovebox. You understand the equations. You can explain why Q, K, V exist, why softmax normalizes scores, why scaled dot-product attention has that specific form. Then you sit down to implement multi-head attention for a production model and discover the paper lies by omission.
+
+Not about the math. The math is correct. But about everything that matters for making it actually work: Why must hidden_dim be divisible by num_heads? What happens to numerical stability when your attention scores hit magnitude 47 at step 23,000? Why does everyone fuse the QKV projections when the paper shows them separately? At what point do you switch from learned positional encodings to RoPE, and why does that decision determine whether you can do 32K context inference after training on 2K?
+
+The paper gives you the algorithm. Production requires understanding the material: representational geometry, memory access patterns, numerical constraints, the decisions that separate a model that trains from a model that converges efficiently. This is the implementation folklore that doesn't make it into papers. The details that matter when you're spending $10M on a training run and you need to get it right the first time.
+
+## Why Multi-Head Exists: The Geometric Argument
+
+Start with the naive approach. One attention operation on the full hidden_dim:
+
+```python
+import torch
+import math
+
+# Naive: single attention head
+batch, seq_len, hidden_dim = 8, 2048, 4096
+
+x = torch.randn(batch, seq_len, hidden_dim)
+W_q = torch.randn(hidden_dim, hidden_dim)
+W_k = torch.randn(hidden_dim, hidden_dim)
+W_v = torch.randn(hidden_dim, hidden_dim)
+
+Q = x @ W_q  # [batch, seq, hidden_dim]
+K = x @ W_k
+V = x @ W_v
+
+scores = Q @ K.transpose(-2, -1) / math.sqrt(hidden_dim)  # [batch, seq, seq]
+attn = torch.softmax(scores, dim=-1)
+output = attn @ V  # [batch, seq, hidden_dim]
+```
+
+This single projection collapses all structure into one set of attention scores. Token i's attention to token j is a scalar. But relationships are multidimensional: syntactic distance, semantic similarity, positional locality, coreference patterns, discourse structure. A single scalar cannot encode all of these simultaneously.
+
+The geometric reality: you're projecting 4096-dimensional representations down to compute pairwise scores. That projection necessarily loses information. Which information you lose depends on the projection axis you choose. Different axes reveal different structural relationships.
+
+A tourmaline crystal shows green when light passes along the c-axis, brown when perpendicular to it. Same atomic lattice, different projection axis reveals different optical properties. This is pleochroism, a fundamental anisotropy in crystal structure. Multi-head attention is pleochroic: the same input representation reveals different patterns depending on which learned projection axis you examine it along.
+
+Multi-head attention doesn't add redundancy for robustness. It examines the representation from multiple angles simultaneously, extracting different types of relationships that cannot be captured by a single projection:
+
+```python
+# Multi-head: parallel projections
+num_heads = 32
+head_dim = hidden_dim // num_heads  # 4096 // 32 = 128
+
+Q = x @ W_q  # [batch, seq, 4096]
+Q = Q.reshape(batch, seq_len, num_heads, head_dim)  # [batch, seq, 32, 128]
+Q = Q.transpose(1, 2)  # [batch, 32, seq, 128]
+# Repeat for K, V
+```
+
+What each head learns emerges from training, not from explicit design:
+
+- Head 1 might learn local syntax (attends to adjacent tokens)
+- Head 7 might learn long-range dependencies (attends to sentence boundaries)
+- Head 15 might learn semantic similarity (attends to tokens with similar embeddings)
+- Head 23 might learn positional patterns (attends to fixed offsets like "every 10th token")
+
+Not because you programmed them to. Because those patterns exist in the representational geometry and different projection axes reveal them. Training finds projection axes that extract useful structure.
+
+### Why head_dim × num_heads Must Equal hidden_dim
+
+This isn't an arbitrary design choice. It's structural, like crystal lattice parameters that determine which cleavage planes exist.
+
+The total information capacity must be preserved. If hidden_dim = 4096:
+
+- 32 heads × 128 dims: works, standard choice
+- 64 heads × 64 dims: works, more heads but less capacity per head
+- 31 heads × 132 dims: breaks, 31 × 132 = 4092 ≠ 4096
+- 30 heads × 136 dims: breaks, 30 × 136 = 4080 ≠ 4096
+
+Modern implementations require exact divisibility for efficient reshaping. You're not just conceptually splitting the representation, you're physically reordering memory to group head dimensions together. If dimensions don't align, you can't reshape without padding or truncation, both of which break the computation.
+
+Production evidence:
+
+- GPT-2: 12 heads × 64 dims = 768 hidden
+- GPT-3: 96 heads × 128 dims = 12,288 hidden
+- LLaMA 70B: 64 heads × 128 dims = 8,192 hidden
+- Mistral 7B: 32 heads × 128 dims = 4,096 hidden
+
+All follow head_dim × num_heads = hidden_dim exactly. This isn't negotiable.
+
+## The Math: Step-by-Step Matrix Operations
+
+Walk through the complete computation with explicit shapes and memory layout considerations:
+
+```python
+import torch
+import math
+
+# Configuration
+batch_size = 8
+seq_len = 2048
+hidden_dim = 4096
+num_heads = 32
+head_dim = hidden_dim // num_heads  # 128
+
+# Input: [batch, seq, hidden_dim]
+x = torch.randn(batch_size, seq_len, hidden_dim)
+```
+
+### Step 1: QKV Projections
+
+The paper shows three separate weight matrices. Production systems fuse them into one:
+
+**Separate projections (naive, what the paper shows):**
+
+```python
+W_q = torch.randn(hidden_dim, hidden_dim)
+W_k = torch.randn(hidden_dim, hidden_dim)
+W_v = torch.randn(hidden_dim, hidden_dim)
+
+Q = x @ W_q  # [8, 2048, 4096]
+K = x @ W_k
+V = x @ W_v
+```
+
+**Fused projection (production, what actually ships):**
+
+```python
+# Single weight matrix for all three projections
+W_qkv = torch.randn(hidden_dim, 3 * hidden_dim)
+
+QKV = x @ W_qkv  # [8, 2048, 12288]
+Q, K, V = QKV.chunk(3, dim=-1)  # Split into three [8, 2048, 4096] tensors
+```
+
+Why fuse? Memory bandwidth. PyTorch loads x from HBM three times with separate projections (once per matmul). Fused projection loads x once, computes all three projections in one kernel launch.
+
+On A100 with 2TB/s HBM bandwidth:
+
+- Input size: batch=8, seq=2048, hidden=4096 = 8 × 2048 × 4096 × 2 bytes (FP16) = 128MB
+- Separate projections: load 128MB three times = 384MB = 0.192ms just for memory traffic
+- Fused projection: load 128MB once = 0.064ms
+
+Three times faster from memory access pattern alone, before considering kernel launch overhead. Every production transformer uses fused QKV projections: Megatron-LM, DeepSpeed, LLaMA, Mistral, all of them.
+
+### Step 2: Reshape for Multi-Head
+
+Transform from [batch, seq, hidden_dim] to [batch, num_heads, seq, head_dim]:
+
+```python
+# Q: [batch, seq, hidden_dim] -> [batch, num_heads, seq, head_dim]
+Q = Q.reshape(batch_size, seq_len, num_heads, head_dim)
+Q = Q.transpose(1, 2)  # Move heads dimension before seq
+
+K = K.reshape(batch_size, seq_len, num_heads, head_dim).transpose(1, 2)
+V = V.reshape(batch_size, seq_len, num_heads, head_dim).transpose(1, 2)
+
+# Now all have shape: [8, 32, 2048, 128]
+print(f"Q shape after reshape: {Q.shape}")
+```
+
+The transpose isn't free. It reorders physical memory so head dimensions are contiguous, enabling efficient per-head attention computation. PyTorch's transpose creates a view with different stride information, but actual memory reordering happens when you perform the next operation (attention score computation).
+
+### Step 3: Compute Attention Scores
+
+Matrix multiply Q and K transpose for each head independently:
+
+```python
+# Q @ K^T for each head
+scores = torch.matmul(Q, K.transpose(-2, -1))
+# [8, 32, 2048, 128] @ [8, 32, 128, 2048] -> [8, 32, 2048, 2048]
+
+# Scale by sqrt(head_dim)
+scores = scores / math.sqrt(head_dim)
+
+print(f"Attention scores shape: {scores.shape}")
+print(f"Scores per head: {2048 * 2048:,} = 4.2M")
+print(f"Total scores: {32 * 2048 * 2048:,} = 134M")
+```
+
+Why scale by sqrt(head_dim)? Without scaling, attention scores have variance proportional to head_dim. At head_dim=128, query-key dot products have standard deviation around 11 (assuming normalized inputs). Softmax saturates: nearly all weight goes to the maximum score, gradients vanish everywhere else.
+
+Dividing by sqrt(128) ≈ 11.3 normalizes variance to approximately 1, keeping softmax in its linear regime where gradients flow properly:
+
+```python
+# Demonstrate scaling effect
+Q_sample = torch.randn(100, 128)
+K_sample = torch.randn(100, 128)
+
+scores_unscaled = Q_sample @ K_sample.T
+scores_scaled = scores_unscaled / math.sqrt(128)
+
+print(f"Unscaled score std: {scores_unscaled.std().item():.2f}")  # ~11
+print(f"Scaled score std: {scores_scaled.std().item():.2f}")      # ~1
+
+# Softmax saturation
+attn_unscaled = torch.softmax(scores_unscaled, dim=-1)
+attn_scaled = torch.softmax(scores_scaled, dim=-1)
+
+print(f"Unscaled max attention weight: {attn_unscaled.max().item():.4f}")  # ~0.95
+print(f"Scaled max attention weight: {attn_scaled.max().item():.4f}")      # ~0.15
+```
+
+Unscaled attention is nearly one-hot: model can only attend to one token strongly. Scaled attention is distributed: model can attend to multiple tokens with meaningful weights.
+
+### Step 4: Apply Softmax (with Numerical Stability)
+
+Naive softmax implementation overflows in FP16:
+
+```python
+# Naive (numerically unstable, don't use this)
+attn_naive = torch.softmax(scores, dim=-1)
+```
+
+If scores contains values like [45.3, 47.1, 44.8], exp(47.1) = 2.4 × 10^20, which overflows FP16's maximum value of 65,504. Result: NaN gradients, training collapse.
+
+Stable implementation subtracts max before exponentiating:
+
+```python
+# Stable (what actually runs)
+scores_max = scores.max(dim=-1, keepdim=True)[0]
+scores_stable = scores - scores_max
+attn = torch.softmax(scores_stable, dim=-1)
+```
+
+Subtracting the max is mathematically equivalent (softmax is translation-invariant) but numerically stable:
+
+- Original: [45.3, 47.1, 44.8]
+- After subtracting max (47.1): [−1.8, 0, −2.3]
+- exp(0) = 1, exp(−1.8) ≈ 0.165, exp(−2.3) ≈ 0.10
+
+No overflow. Same relative probabilities. PyTorch's softmax does this automatically, but when you're writing custom CUDA kernels (or debugging why your implementation breaks), this matters.
+
+### Step 5: Apply Attention to Values
+
+Multiply attention weights by values:
+
+```python
+output = torch.matmul(attn, V)
+# [8, 32, 2048, 2048] @ [8, 32, 2048, 128] -> [8, 32, 2048, 128]
+```
+
+Each token's output is a weighted sum of value vectors, where weights come from attention scores. This is where the actual "attending" happens: tokens pull information from other tokens proportional to their attention weights.
+
+### Step 6: Concatenate Heads
+
+Reshape back from per-head representation to unified representation:
+
+```python
+# Transpose: [8, 32, 2048, 128] -> [8, 2048, 32, 128]
+output = output.transpose(1, 2)
+
+# Reshape: [8, 2048, 32, 128] -> [8, 2048, 4096]
+output = output.reshape(batch_size, seq_len, hidden_dim)
+```
+
+You're recombining the different "views" from each projection axis back into a single unified representation. Like how crystallographers combine information from multiple diffraction patterns to reconstruct full 3D structure.
+
+### Step 7: Output Projection
+
+Final linear transformation to mix information across heads:
+
+```python
+W_o = torch.randn(hidden_dim, hidden_dim)
+output = output @ W_o
+```
+
+This projection lets the model learn how to combine information from different heads. Without it, heads would be completely independent. The output projection allows head 1's syntactic information to interact with head 7's long-range dependency information in useful ways.
+
+### Complete Implementation
+
+```python
+def multi_head_attention(
+    x,  # [batch, seq, hidden_dim]
+    W_qkv,  # [hidden_dim, 3 * hidden_dim]
+    W_o,  # [hidden_dim, hidden_dim]
+    num_heads,
+    mask=None
+):
+    """
+    Multi-head attention: complete implementation.
+    
+    Args:
+        x: Input tensor [batch, seq_len, hidden_dim]
+        W_qkv: Fused QKV projection weights
+        W_o: Output projection weights
+        num_heads: Number of attention heads
+        mask: Optional attention mask [batch, 1, seq, seq] or [seq, seq]
+    
+    Returns:
+        output: [batch, seq_len, hidden_dim]
+    """
+    batch, seq_len, hidden_dim = x.shape
+    head_dim = hidden_dim // num_heads
+    
+    # Fused QKV projection
+    QKV = x @ W_qkv  # [batch, seq, 3 * hidden_dim]
+    Q, K, V = QKV.chunk(3, dim=-1)  # Each: [batch, seq, hidden_dim]
+    
+    # Reshape for multi-head
+    Q = Q.reshape(batch, seq_len, num_heads, head_dim).transpose(1, 2)
+    K = K.reshape(batch, seq_len, num_heads, head_dim).transpose(1, 2)
+    V = V.reshape(batch, seq_len, num_heads, head_dim).transpose(1, 2)
+    # All now: [batch, num_heads, seq, head_dim]
+    
+    # Attention scores
+    scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(head_dim)
+    # [batch, num_heads, seq, seq]
+    
+    # Apply mask if provided
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, float('-inf'))
+    
+    # Softmax
+    attn = torch.softmax(scores, dim=-1)
+    
+    # Apply to values
+    output = torch.matmul(attn, V)
+    # [batch, num_heads, seq, head_dim]
+    
+    # Concatenate heads
+    output = output.transpose(1, 2).reshape(batch, seq_len, hidden_dim)
+    # [batch, seq, hidden_dim]
+    
+    # Output projection
+    output = output @ W_o
+    
+    return output
+
+
+# Test it
+x = torch.randn(8, 2048, 4096)
+W_qkv = torch.randn(4096, 3 * 4096)
+W_o = torch.randn(4096, 4096)
+
+output = multi_head_attention(x, W_qkv, W_o, num_heads=32)
+print(f"Input shape: {x.shape}")
+print(f"Output shape: {output.shape}")
+assert output.shape == x.shape, "Output shape must match input shape"
+```
+
+This is the core attention mechanism. Everything else (masking, positional encodings, optimizations) builds on this foundation.
+
+## Masking: Preventing Illegal Attention
+
+Attention is promiscuous by default. Every token can attend to every other token. Masking restricts which tokens can attend to which, enforcing constraints required by your task or data structure.
+
+### Why Masking Exists: Three Scenarios
+
+**1. Causal (Autoregressive) Masking:** Token at position i cannot see tokens at positions j > i. Required for language modeling where you're predicting next tokens: the model shouldn't cheat by looking at future tokens during training.
+
+**2. Padding Masking:** Variable-length sequences padded to max_seq_len contain meaningless padding tokens. Real tokens should not attend to padding, and padding should not influence attention patterns.
+
+**3. Custom Masking:** Task-specific constraints. Packed sequences where multiple independent sequences live in one batch element (from Unit 2's dynamic batching). Documents that shouldn't attend across paragraph boundaries. Retrieval where queries can attend to documents but documents cannot attend to queries.
+
+### Causal Masking: The Standard Case
+
+Token at position i can only attend to positions 0 through i (inclusive). Future is masked out:
+
+```python
+def create_causal_mask(seq_len):
+    """
+    Create causal attention mask.
+    
+    Returns: [seq_len, seq_len] where mask[i,j] = 1 if i can attend to j
+    """
+    # Lower triangular matrix
+    mask = torch.tril(torch.ones(seq_len, seq_len))
+    return mask
+
+mask = create_causal_mask(10)
+print(mask)
+```
+
+Output:
+```
+tensor([[1., 0., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [1., 1., 0., 0., 0., 0., 0., 0., 0., 0.],
+        [1., 1., 1., 0., 0., 0., 0., 0., 0., 0.],
+        [1., 1., 1., 1., 0., 0., 0., 0., 0., 0.],
+        ...
+        [1., 1., 1., 1., 1., 1., 1., 1., 1., 1.]])
+```
+
+Position 0 can only attend to itself. Position 4 can attend to positions 0-4. Position 9 can attend to all positions.
+
+**Application in attention:**
+
+```python
+scores = torch.matmul(Q, K.transpose(-2, -1)) / math.sqrt(head_dim)
+
+# Apply mask: set blocked positions to -inf before softmax
+mask = create_causal_mask(seq_len).to(scores.device)
+scores = scores.masked_fill(mask == 0, float('-inf'))
+
+# Softmax: -inf positions get probability 0
+attn = torch.softmax(scores, dim=-1)
+```
+
+Why negative infinity? Softmax computes exp(x) / sum(exp(x)). exp(−∞) = 0. Masked positions contribute zero probability, as if they don't exist. This is numerically stable (unlike masking after softmax by multiplying by 0, which doesn't properly normalize).
+
+### Padding Masking: Variable-Length Sequences
+
+Real sequences have different lengths but are padded to max_seq_len for batching. Padding tokens (usually token_id = 0) should not influence attention:
+
+```python
+def create_padding_mask(input_ids, pad_token_id=0):
+    """
+    Create padding mask from input token IDs.
+    
+    Args:
+        input_ids: [batch, seq_len], token IDs where pad_token_id indicates padding
+        pad_token_id: ID used for padding tokens
+    
+    Returns:
+        mask: [batch, 1, 1, seq_len] broadcastable to [batch, heads, seq, seq]
+    """
+    # 1 where real tokens, 0 where padding
+    mask = (input_ids != pad_token_id).unsqueeze(1).unsqueeze(2)
+    return mask
+
+# Example
+input_ids = torch.tensor([
+    [101, 2054, 2003, 1996, 3160, 0, 0, 0],  # 5 real tokens, 3 padding
+    [101, 2129, 2024, 2017, 0, 0, 0, 0],     # 4 real tokens, 4 padding
+])
+
+mask = create_padding_mask(input_ids, pad_token_id=0)
+print(f"Mask shape: {mask.shape}")  # [2, 1, 1, 8]
+print(mask[0, 0, 0])  # [1, 1, 1, 1, 1, 0, 0, 0]
+```
+
+### Combining Causal and Padding Masks
+
+In autoregressive generation with variable-length inputs, you need both:
+
+```python
+# Causal mask: [seq_len, seq_len]
+causal_mask = create_causal_mask(seq_len)
+
+# Padding mask: [batch, 1, 1, seq_len]
+padding_mask = create_padding_mask(input_ids)
+
+# Combine with element-wise AND
+# Broadcasting: [1, 1, seq, seq] & [batch, 1, 1, seq] -> [batch, 1, seq, seq]
+causal_mask = causal_mask.unsqueeze(0).unsqueeze(0)  # [1, 1, seq, seq]
+combined_mask = causal_mask & padding_mask
+# Result: [batch, 1, seq_len, seq_len]
+
+# Apply to scores
+scores = scores.masked_fill(combined_mask == 0, float('-inf'))
+```
+
+The combined mask ensures:
+1. Token i cannot attend to token j > i (causal constraint)
+2. No token attends to padding positions (padding constraint)
+
+### Custom Masking: Packed Sequences
+
+When multiple sequences are packed into one batch element (Unit 2's sequence packing for efficiency), sequences cannot attend across boundaries:
+
+```python
+def create_packed_sequence_mask(boundaries, max_len):
+    """
+    Create mask for packed sequences.
+    
+    Args:
+        boundaries: List of [start, end) positions for each sequence
+                   Example: [0, 512, 1024, 2048] means 3 sequences
+        max_len: Maximum sequence length
+    
+    Returns:
+        mask: [max_len, max_len] where sequences can only attend within themselves
+    """
+    mask = torch.zeros(max_len, max_len, dtype=torch.bool)
+    
+    for i in range(len(boundaries) - 1):
+        start = boundaries[i]
+        end = boundaries[i + 1]
+        # Sequence i can attend within its own boundaries
+        mask[start:end, start:end] = True
+    
+    return mask
+
+# Example: 3 sequences packed into one [2048] tensor
+# Sequence 1: positions 0-511 (512 tokens)
+# Sequence 2: positions 512-1023 (512 tokens)
+# Sequence 3: positions 1024-2047 (1024 tokens)
+boundaries = [0, 512, 1024, 2048]
+mask = create_packed_sequence_mask(boundaries, 2048)
+
+print(f"Position 100 can attend to position 600: {mask[100, 600].item()}")  # False
+print(f"Position 100 can attend to position 200: {mask[100, 200].item()}")  # True
+print(f"Position 600 can attend to position 700: {mask[600, 700].item()}")  # True
+```
+
+Visualize the mask:
+
+```python
+import matplotlib.pyplot as plt
+
+plt.figure(figsize=(10, 10))
+plt.imshow(mask.cpu().numpy(), cmap='binary', interpolation='nearest')
+plt.title('Packed Sequence Attention Mask')
+plt.xlabel('Key Position')
+plt.ylabel('Query Position')
+plt.colorbar(label='Can Attend')
+plt.savefig('packed_mask.png', dpi=150, bbox_inches='tight')
+```
+
+The visualization shows block-diagonal structure: each sequence (block along the diagonal) can attend within itself, but not to other sequences.
+
+### Attention Mask Shapes: The Source of Silent Bugs
+
+Mask shape mismatches cause either crashes (good: fails fast) or silent bugs (bad: wrong results):
+
+```python
+# Attention scores: [batch, num_heads, seq_len, seq_len]
+scores.shape  # [8, 32, 2048, 2048]
+
+# Common mask shapes and how to broadcast them:
+
+# 1. Causal mask: [seq_len, seq_len]
+causal = create_causal_mask(seq_len)  # [2048, 2048]
+# Need: [1, 1, 2048, 2048] to broadcast across batch and heads
+causal = causal.unsqueeze(0).unsqueeze(0)
+
+# 2. Padding mask: [batch, seq_len]
+padding = (input_ids != 0)  # [8, 2048]
+# Need: [8, 1, 1, 2048] to broadcast across heads and duplicate for query dimension
+padding = padding.unsqueeze(1).unsqueeze(2)
+
+# 3. Combined mask
+mask = causal & padding  # Broadcasting: [1,1,2048,2048] & [8,1,1,2048] -> [8,1,2048,2048]
+
+# Apply
+scores = scores.masked_fill(mask == 0, float('-inf'))
+```
+
+**Debugging tip:** Always print mask shapes during development:
+
+```python
+print(f"Scores shape: {scores.shape}")
+print(f"Mask shape: {mask.shape}")
+print(f"Will broadcast: {torch.broadcast_shapes(scores.shape, mask.shape)}")
+```
+
+If shapes don't broadcast correctly, PyTorch will error immediately (good). If they broadcast but incorrectly (e.g., mask is [batch, heads, 1, seq] instead of [batch, heads, seq, 1]), you get wrong results with no error (bad, hard to debug).
+
+## Positional Encodings: The Coordinate System
+
+Attention is permutation-invariant. Swap token order, attention computes the same thing:
+
+```python
+x1 = ["the", "cat", "sat"]
+x2 = ["sat", "cat", "the"]
+
+# Without positional information, attention treats these identically
+# QKV projections see embeddings, not positions
+```
+
+For language, word order matters. "The cat sat on the mat" ≠ "The mat sat on the cat." Positional encodings inject sequence position information into the model.
+
+### Solution 1: Learned Absolute Positions (GPT-2, GPT-3)
+
+Simplest approach: learnable embedding for each position index.
+
+```python
+import torch.nn as nn
+
+class LearnedPositionalEncoding(nn.Module):
+    def __init__(self, max_seq_len, hidden_dim):
+        super().__init__()
+        # Embedding table: one vector per position
+        self.pos_embedding = nn.Embedding(max_seq_len, hidden_dim)
+    
+    def forward(self, x):
+        """
+        Add positional embeddings to input.
+        
+        Args:
+            x: [batch, seq_len, hidden_dim]
+        
+        Returns:
+            x + positional embeddings: [batch, seq_len, hidden_dim]
+        """
+        batch, seq_len, hidden_dim = x.shape
+        positions = torch.arange(seq_len, device=x.device)  # [0, 1, 2, ..., seq_len-1]
+        pos_emb = self.pos_embedding(positions)  # [seq_len, hidden_dim]
+        return x + pos_emb  # Broadcasting: [batch, seq, hidden] + [seq, hidden]
+
+# Usage
+pos_enc = LearnedPositionalEncoding(max_seq_len=2048, hidden_dim=4096)
+x = torch.randn(8, 1024, 4096)
+x_with_pos = pos_enc(x)
+```
+
+**Advantages:**
+- Simple to implement (3 lines)
+- Learned during training, optimized for your data
+- GPT-2 and GPT-3 used this successfully
+
+**Disadvantages:**
+- Cannot generalize beyond max_seq_len: train on 1024 tokens, cannot infer on 2048
+- Uses parameters: 2048 × 4096 = 8.4M parameters just for positions
+- Each position is independent: no built-in notion of relative distance (position 10 and 11 are unrelated)
+
+**When to use:** Short, fixed-length sequences where you'll never exceed training length. Fine-tuning scenarios where base model already has this.
+
+### Solution 2: Sinusoidal Encodings (Original Transformer)
+
+Fixed mathematical function, no learned parameters, works on any length:
+
+```python
+def sinusoidal_positional_encoding(seq_len, hidden_dim):
+    """
+    Create sinusoidal positional encodings.
+    
+    Args:
+        seq_len: Sequence length
+        hidden_dim: Model dimension (must be even)
+    
+    Returns:
+        pos_enc: [seq_len, hidden_dim] positional encodings
+    """
+    position = torch.arange(seq_len).unsqueeze(1)  # [seq_len, 1]
+    
+    # Frequency terms: 1 / 10000^(2i/d)
+    div_term = torch.exp(
+        torch.arange(0, hidden_dim, 2) * -(math.log(10000.0) / hidden_dim)
+    )  # [hidden_dim/2]
+    
+    pos_enc = torch.zeros(seq_len, hidden_dim)
+    pos_enc[:, 0::2] = torch.sin(position * div_term)  # Even indices
+    pos_enc[:, 1::2] = torch.cos(position * div_term)  # Odd indices
+    
+    return pos_enc
+
+# Usage
+pos_enc = sinusoidal_positional_encoding(2048, 4096)
+x = torch.randn(8, 2048, 4096)
+x_with_pos = x + pos_enc.unsqueeze(0)  # Broadcast to batch dimension
+```
+
+**The mathematics:** For position pos and dimension i:
+
+- PE(pos, 2i) = sin(pos / 10000^(2i/d_model))
+- PE(pos, 2i+1) = cos(pos / 10000^(2i/d_model))
+
+The wavelength increases exponentially with dimension. Low dimensions (high frequency) encode fine-grained positional changes. High dimensions (low frequency) encode coarse positional patterns. The model can learn to attend to different "frequency bands" to extract position information at different scales.
+
+**Why sin/cos specifically?** They have a useful property: PE(pos+
